@@ -1,0 +1,29 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# All manifests that belong to this overlay.
+# Add new files here as each component is scaffolded.
+resources:
+  - api/deployment.yaml
+  - api/service.yaml
+  - frontend/deployment.yaml
+  - frontend/service.yaml
+  - database/deployment.yaml
+  - database/service.yaml
+  - database/pvc.yaml
+
+# Image tags are managed by the CI pipeline (update-manifests job).
+# The bot runs:
+#   kustomize edit set image <name>=<name>:<short-sha>
+# which rewrites the newTag field below on every push to main.
+# ArgoCD detects the diff and syncs the cluster automatically.
+images:
+  - name: ghcr.io/OWNER/portal-dos-links-api
+    newTag: latest
+  - name: ghcr.io/OWNER/portal-dos-links-frontend
+    newTag: latest
+
+# Common labels applied to every resource in this overlay.
+commonLabels:
+  app.kubernetes.io/part-of: portal-dos-links
+  app.kubernetes.io/managed-by: argocd

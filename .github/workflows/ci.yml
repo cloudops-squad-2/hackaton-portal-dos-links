@@ -2,12 +2,12 @@ name: CI
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "develop"]
     # Skip the bot's own tag bump to avoid a build loop
     paths-ignore:
       - "k8s/kustomization.yaml"
   pull_request:
-    branches: ["main"]
+    branches: ["main", "develop"]
 
 env:
   REGISTRY: ghcr.io

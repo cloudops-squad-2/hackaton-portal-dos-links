@@ -3,7 +3,7 @@ import { LinkService } from './link.service.js';
 import { CreateLinkDto } from './dto/create-link.dto.js';
 import { Link } from '../generated/prisma/client.js';
 
-@Controller('links')
+@Controller('api/links')
 export class LinkController {
   constructor(private readonly linkService: LinkService) {}
 

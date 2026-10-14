@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { GoneException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service.js';
 import { CreateLinkDto } from './dto/create-link.dto.js';
 import { nanoid } from 'nanoid';
@@ -35,5 +35,24 @@ export class LinkService {
     }
 
     throw new Error('Failed to create link after maximum attempts');
+  }
+
+  async resolve(code: string): Promise<string> {
+    const link = await this.prismaService.link.findUnique({ where: { code } });
+
+    if (!link) {
+      throw new NotFoundException('Link not found');
+    }
+
+    if (link.expiresAt && link.expiresAt <= new Date()) {
+      throw new GoneException('Link has expired');
+    }
+
+    await this.prismaService.link.update({
+      where: { code },
+      data: { clickCount: { increment: 1 } },
+    });
+
+    return link.originalUrl;
   }
 }

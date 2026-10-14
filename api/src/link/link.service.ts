@@ -4,6 +4,7 @@ import { CreateLinkDto } from './dto/create-link.dto.js';
 import { nanoid } from 'nanoid';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/client';
 import { Link } from '../generated/prisma/client.js';
+import { ListLinksDto } from './dto/list-links.dto.js';
 
 @Injectable()
 export class LinkService {
@@ -35,6 +36,30 @@ export class LinkService {
     }
 
     throw new Error('Failed to create link after maximum attempts');
+  }
+
+  async listLinks(query: ListLinksDto) {
+    const { sortBy, limit, order, page } = query;
+    const orderBy = { [sortBy]: order };
+
+    const [links, total] = await this.prismaService.$transaction([
+      this.prismaService.link.findMany({
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy,
+      }),
+      this.prismaService.link.count(),
+    ]);
+
+    return {
+      data: links,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 
   async resolve(code: string): Promise<string> {

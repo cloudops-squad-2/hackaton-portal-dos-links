@@ -1,0 +1,19 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Link {
+  id String @id @default(cuid())
+  code String @unique
+  originalUrl String
+  clickCount Int @default(0)
+  createdAt DateTime @default(now())
+  expiresAt DateTime?
+
+  @@index([createdAt])
+}

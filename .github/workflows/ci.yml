@@ -2,10 +2,7 @@ name: CI
 
 on:
   push:
-    branches: ["develop"]
-    # Skip the bot's own tag bump to avoid a build loop
-    paths-ignore:
-      - "k8s/kustomization.yaml"
+    branches: ["main", "develop"]
   pull_request:
     branches: ["main", "develop"]
 
@@ -14,7 +11,6 @@ env:
   IMAGE_BASENAME: portal-dos-links
   # Pinned tool versions
   NODE_VERSION: "22"
-  KUSTOMIZE_VERSION: "5.4.3"
   GITLEAKS_VERSION: "8.21.2"
 
 permissions:

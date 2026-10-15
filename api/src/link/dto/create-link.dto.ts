@@ -9,7 +9,6 @@ import {
   MaxLength,
   Min,
   MinLength,
-  ValidateIf,
 } from 'class-validator';
 
 export class CreateLinkDto {
@@ -47,7 +46,7 @@ export class CreateLinkDto {
   @IsOptional()
   @IsString()
   @MinLength(4)
-  @MaxLength(8)
+  @MaxLength(10)
   customCode?: string;
 
   @IsOptional()

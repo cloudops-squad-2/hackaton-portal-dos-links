@@ -12,6 +12,12 @@ export class CreateLinkDto {
 
   @IsOptional()
   @IsInt()
+  @Min(1)
+  @Max(1000000)
+  clicksLimit?: number;
+
+  @IsOptional()
+  @IsInt()
   @Min(60)
   @Max(2592000)
   expiresIn?: number;

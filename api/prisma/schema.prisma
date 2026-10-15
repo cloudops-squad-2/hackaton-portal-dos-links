@@ -12,6 +12,7 @@ model Link {
   code String @unique
   originalUrl String
   clickCount Int @default(0)
+  clickLimit Int?
   createdAt DateTime @default(now())
   expiresAt DateTime?
 

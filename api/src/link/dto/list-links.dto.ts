@@ -9,6 +9,7 @@ export class ListLinksDto {
   page: number = 1;
 
   @IsOptional()
+  @Type(() => Number)
   @IsInt()
   @Max(100)
   limit: number = 10;

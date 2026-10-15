@@ -40,6 +40,7 @@ export class LinkService {
             data: {
               code,
               originalUrl: dto.url,
+              clickLimit: dto.clicksLimit ?? null,
               expiresAt,
             },
           });
@@ -63,10 +64,15 @@ export class LinkService {
         }
       }
 
-      throw lastError ?? new Error('Failed to create link after maximum attempts');
+      throw (
+        lastError ?? new Error('Failed to create link after maximum attempts')
+      );
     } catch (error) {
       span.recordException(error as Error);
-      span.setStatus({ code: SpanStatusCode.ERROR, message: (error as Error).message });
+      span.setStatus({
+        code: SpanStatusCode.ERROR,
+        message: (error as Error).message,
+      });
       throw error;
     } finally {
       span.end();
@@ -102,11 +108,16 @@ export class LinkService {
     span.setAttribute('link.code', code);
 
     try {
-      const link = await this.prismaService.link.findUnique({ where: { code } });
+      const link = await this.prismaService.link.findUnique({
+        where: { code },
+      });
 
       if (!link) {
         span.setAttribute('link.found', false);
-        span.setStatus({ code: SpanStatusCode.ERROR, message: 'Link not found' });
+        span.setStatus({
+          code: SpanStatusCode.ERROR,
+          message: 'Link not found',
+        });
         throw new NotFoundException('Link not found');
       }
 
@@ -114,9 +125,23 @@ export class LinkService {
 
       if (link.expiresAt && link.expiresAt <= new Date()) {
         span.setAttribute('link.expired', true);
-        span.setStatus({ code: SpanStatusCode.ERROR, message: 'Link has expired' });
+        span.setStatus({
+          code: SpanStatusCode.ERROR,
+          message: 'Link has expired',
+        });
         linksExpiredCounter.add(1);
         throw new GoneException('Link has expired');
+      }
+
+      if (link.clickLimit && link.clickCount >= link.clickLimit) {
+        span.setAttribute('link.click_limit_reached', true);
+        span.setAttribute('link.click_limit', link.clickLimit);
+        span.setStatus({
+          code: SpanStatusCode.ERROR,
+          message: 'Link click limit reached',
+        });
+
+        throw new GoneException('Link click limit reached');
       }
 
       span.setAttribute('link.expired', false);
@@ -140,7 +165,10 @@ export class LinkService {
         !(error instanceof GoneException)
       ) {
         span.recordException(error as Error);
-        span.setStatus({ code: SpanStatusCode.ERROR, message: (error as Error).message });
+        span.setStatus({
+          code: SpanStatusCode.ERROR,
+          message: (error as Error).message,
+        });
       }
       throw error;
     } finally {

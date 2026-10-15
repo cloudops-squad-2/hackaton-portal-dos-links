@@ -1,4 +1,10 @@
-import { GoneException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  GoneException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service.js';
 import { CreateLinkDto } from './dto/create-link.dto.js';
 import { nanoid } from 'nanoid';
@@ -22,23 +28,74 @@ export class LinkService {
     const span = tracer.startSpan('link.create');
 
     try {
-      const expiresAt = dto.expiresIn
-        ? new Date(Date.now() + dto.expiresIn * 1000)
-        : null;
+      if (dto.expiresIn !== undefined && dto.expiresAt !== undefined) {
+        throw new BadRequestException(
+          'expiresIn and expiresAt cannot be provided together',
+        );
+      }
 
-      span.setAttribute('link.has_ttl', dto.expiresIn != null);
-      if (dto.expiresIn != null) {
+      let expiresAt: Date | null = null;
+
+      if (dto.expiresAt !== undefined) {
+        expiresAt = new Date(dto.expiresAt);
+
+        if (expiresAt.getTime() <= Date.now()) {
+          throw new BadRequestException('expiresAt must be in the future');
+        }
+        span.setAttribute('link.expires_at_date', dto.expiresAt);
+      } else if (dto.expiresIn !== undefined) {
+        expiresAt = new Date(Date.now() + dto.expiresIn * 1000);
+
         span.setAttribute('link.expires_in_seconds', dto.expiresIn);
+      }
+
+      span.setAttribute('link.has_ttl', expiresAt != null);
+      span.setAttribute('link.has_click_limit', dto.clicksLimit != null);
+
+      if (dto.clicksLimit) {
+        span.setAttribute('link.max_click_limit', dto.clicksLimit);
       }
 
       let lastError: unknown;
 
+      if (dto.customCode) {
+        try {
+          const link = await this.prismaService.link.create({
+            data: {
+              code: dto.customCode,
+              title: dto.title ?? null,
+              originalUrl: dto.url,
+              clickLimit: dto.clicksLimit ?? null,
+              expiresAt,
+            },
+          });
+
+          span.setAttribute('link.code', link.code);
+          span.setStatus({ code: SpanStatusCode.OK });
+          linksCreatedCounter.add(1);
+
+          return link;
+        } catch (error) {
+          lastError = error;
+          const isUniqueConstraintError =
+            error instanceof PrismaClientKnownRequestError &&
+            error.code === 'P2002';
+
+          if (!isUniqueConstraintError) {
+            throw error;
+          }
+
+          throw new ConflictException('Link code already taken');
+        }
+      }
+
       for (let attempts = 0; attempts < 3; attempts++) {
         try {
-          const code = nanoid(7);
+          const code = nanoid(dto.codeSize);
           const link = await this.prismaService.link.create({
             data: {
               code,
+              title: dto.title ?? null,
               originalUrl: dto.url,
               clickLimit: dto.clicksLimit ?? null,
               expiresAt,

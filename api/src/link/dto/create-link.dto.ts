@@ -1,4 +1,15 @@
-import { IsInt, IsOptional, IsUrl, Max, Min } from 'class-validator';
+import {
+  IsDateString,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUrl,
+  Max,
+  MaxLength,
+  Min,
+  MinLength,
+} from 'class-validator';
 
 export class CreateLinkDto {
   @IsUrl(
@@ -21,4 +32,26 @@ export class CreateLinkDto {
   @Min(60)
   @Max(2592000)
   expiresIn?: number;
+
+  @IsOptional()
+  @IsDateString()
+  expiresAt?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(4)
+  @Max(10)
+  codeSize?: number = 6;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(4)
+  @MaxLength(10)
+  customCode?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(3)
+  @MaxLength(50)
+  title?: string;
 }

@@ -57,11 +57,11 @@ Status legend: `[ ]` todo · `[x]` done · `[-]` in progress
 
 ## 5 — Observability (API side)
 
-- [ ] **TASK-OBS-01** Install `@opentelemetry/sdk-node`, `@opentelemetry/auto-instrumentations-node`, OTLP exporter
-- [ ] **TASK-OBS-02** Initialize OTel SDK in `main.ts` before NestJS bootstrap
-- [ ] **TASK-OBS-03** Add manual spans in `LinkService.create` and `LinkService.resolve`
-- [ ] **TASK-OBS-04** Export metrics: `links.created`, `links.redirected`, `links.expired`, HTTP duration histogram
-- [ ] **TASK-OBS-05** Add `OTEL_EXPORTER_OTLP_ENDPOINT` and `OTEL_SERVICE_NAME` to env var documentation
+- [x] **TASK-OBS-01** Install `@opentelemetry/sdk-node`, `@opentelemetry/auto-instrumentations-node`, OTLP exporter
+- [x] **TASK-OBS-02** Initialize OTel SDK in `main.ts` before NestJS bootstrap
+- [x] **TASK-OBS-03** Add manual spans in `LinkService.create` and `LinkService.resolve`
+- [x] **TASK-OBS-04** Export metrics: `links.created`, `links.redirected`, `links.expired`, HTTP duration histogram
+- [x] **TASK-OBS-05** Add `OTEL_EXPORTER_OTLP_ENDPOINT` and `OTEL_SERVICE_NAME` to env var documentation
 
 ---
 

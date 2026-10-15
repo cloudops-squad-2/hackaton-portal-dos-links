@@ -49,4 +49,10 @@ export class CreateLinkDto {
   @MinLength(4)
   @MaxLength(8)
   customCode?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(3)
+  @MaxLength(50)
+  title?: string;
 }

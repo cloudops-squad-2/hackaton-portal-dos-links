@@ -63,6 +63,7 @@ export class LinkService {
           const link = await this.prismaService.link.create({
             data: {
               code: dto.customCode,
+              title: dto.title ?? null,
               originalUrl: dto.url,
               clickLimit: dto.clicksLimit ?? null,
               expiresAt,
@@ -94,6 +95,7 @@ export class LinkService {
           const link = await this.prismaService.link.create({
             data: {
               code,
+              title: dto.title ?? null,
               originalUrl: dto.url,
               clickLimit: dto.clicksLimit ?? null,
               expiresAt,

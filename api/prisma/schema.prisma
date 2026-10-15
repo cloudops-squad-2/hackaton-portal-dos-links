@@ -10,6 +10,7 @@ datasource db {
 model Link {
   id String @id @default(cuid())
   code String @unique
+  title String?
   originalUrl String
   clickCount Int @default(0)
   clickLimit Int?

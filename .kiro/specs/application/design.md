@@ -1,5 +1,15 @@
 # Portal dos Links — Design
 
+## Overview
+
+Cloud-native link shortener built for the CloudOps Bootcamp Hackathon. The system consists of a NestJS/Fastify API, a React frontend, and a PostgreSQL database, all instrumented with OpenTelemetry and deployed via GitOps (ArgoCD).
+
+## Architecture
+
+## Components and Interfaces
+
+## Data Models
+
 ## Architecture Overview
 
 ```
@@ -210,3 +220,102 @@ Stage 2 — prod
   COPY --from=build /app/dist /usr/share/nginx/html
   EXPOSE 80
 ```
+
+---
+
+### Docker Compose
+
+#### Service Topology
+
+Three services share a single bridge network `portal-net`:
+
+```
+postgres ──► api ──► frontend
+```
+
+- `postgres` — database; exposes 5432
+- `api` — NestJS backend; built from `./api`; exposes 3000 (HTTP) and 4317 (OTLP/gRPC)
+- `frontend` — Nginx-served React build; built from `./frontend`; exposes 80
+
+#### Port Mapping
+
+| Service    | Container port | Host port | Protocol | Purpose               |
+|------------|---------------|-----------|----------|-----------------------|
+| postgres   | 5432          | 5432      | TCP      | Database connections  |
+| api        | 3000          | 3000      | TCP      | HTTP API              |
+| api        | 4317          | 4317      | TCP      | OTLP/gRPC telemetry   |
+| frontend   | 80            | 80        | TCP      | Web UI                |
+
+#### Volumes
+
+One named volume keeps Postgres data across `docker compose down`:
+
+| Volume name     | Mount path                    | Service  |
+|-----------------|-------------------------------|----------|
+| `postgres_data` | `/var/lib/postgresql/data`    | postgres |
+
+#### Build Contexts
+
+| Service  | build.context  |
+|----------|----------------|
+| api      | `./api`        |
+| frontend | `./frontend`   |
+
+Both services are built from source on `docker compose up --build`, requiring no registry access (REQ-DC-01, REQ-DC-02).
+
+#### Environment Wiring
+
+**api**
+```
+DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
+OTEL_SERVICE_NAME=portal-dos-links-api
+PORT=3000
+```
+
+**frontend**
+```
+VITE_API_URL=http://localhost:3000
+```
+
+All values are driven by variables defined in `.env` (see `.env.example` below), so no credentials are hardcoded in the compose file (REQ-NF-02, REQ-DC-07).
+
+#### Startup Ordering
+
+```
+postgres (healthy) ──condition: service_healthy──► api (started) ──condition: service_started──► frontend
+```
+
+- `api.depends_on.postgres.condition: service_healthy` — the API only starts after Postgres passes its healthcheck (REQ-DC-08, REQ-DC-09).
+- `frontend.depends_on.api.condition: service_started` — the frontend starts once the API container is running (REQ-DC-08).
+
+#### Postgres Healthcheck
+
+```yaml
+healthcheck:
+  test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+  interval: 5s
+  timeout: 5s
+  retries: 5
+```
+
+Uses `$$` escaping so Docker Compose expands the variable at container runtime rather than at compose-file parse time (REQ-DC-09).
+
+#### `.env.example` (repo root)
+
+Documents every variable referenced by `docker-compose.yml`:
+
+```dotenv
+# PostgreSQL credentials — used by the postgres service and interpolated into DATABASE_URL
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=changeme
+POSTGRES_DB=portal_dos_links
+
+# Frontend — base URL of the API reachable from the browser
+VITE_API_URL=http://localhost:3000
+
+# OpenTelemetry — logical service name shown in traces
+OTEL_SERVICE_NAME=portal-dos-links-api
+```
+
+Operators copy this file to `.env` and fill in real values before running `docker compose up` (REQ-DC-10).

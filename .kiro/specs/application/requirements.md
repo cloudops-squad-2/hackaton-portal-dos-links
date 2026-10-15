@@ -1,6 +1,6 @@
-# Portal dos Links — Application Repository Spec
+# Requirements Document
 
-## Overview
+## Introduction
 
 Cloud-native link shortener built for the CloudOps Bootcamp Hackathon.
 This repository owns the application code (API, frontend, database schema) and the CI pipeline.
@@ -93,3 +93,18 @@ The following belong to the **config repository**:
 - ArgoCD `Application` manifest
 - OpenTelemetry Collector configuration
 - Grafana dashboards and datasource definitions
+
+---
+
+### 6 — Docker Compose
+
+- **REQ-DC-01** The repository root must contain a `docker-compose.yml` that starts the full stack (`postgres`, `api`, `frontend`) with a single `docker compose up` command, requiring no registry access.
+- **REQ-DC-02** Each service (`api`, `frontend`) must declare a `build.context` pointing to its local `Dockerfile` so the compose file works for local development from source.
+- **REQ-DC-03** The `api` service must expose two ports: `3000` (HTTP API) and `4317` (OTLP/gRPC, used as `OTEL_EXPORTER_OTLP_ENDPOINT`).
+- **REQ-DC-04** The `frontend` service must expose port `80`.
+- **REQ-DC-05** The `postgres` service must expose port `5432`.
+- **REQ-DC-06** The `postgres` service must mount a named persistent volume so database data survives `docker compose down`.
+- **REQ-DC-07** All required environment variables must be wired in the compose file: `DATABASE_URL` and `OTEL_EXPORTER_OTLP_ENDPOINT` and `OTEL_SERVICE_NAME` and `PORT` for the `api` service; `VITE_API_URL` for the `frontend` service.
+- **REQ-DC-08** The `api` service must declare `depends_on: postgres` and the `frontend` service must declare `depends_on: api`, enforcing correct startup order.
+- **REQ-DC-09** The `postgres` service must define a `healthcheck` (e.g. `pg_isready`) so that the `api` service waits for a healthy database before starting, using `condition: service_healthy`.
+- **REQ-DC-10** A `.env.example` file at the repository root must document every variable referenced by `docker-compose.yml` with placeholder values and inline comments explaining each variable.

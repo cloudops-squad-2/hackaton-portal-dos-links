@@ -1,4 +1,9 @@
-import { GoneException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  GoneException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service.js';
 import { CreateLinkDto } from './dto/create-link.dto.js';
 import { nanoid } from 'nanoid';
@@ -22,13 +27,32 @@ export class LinkService {
     const span = tracer.startSpan('link.create');
 
     try {
-      const expiresAt = dto.expiresIn
-        ? new Date(Date.now() + dto.expiresIn * 1000)
-        : null;
+      if (dto.expiresIn !== undefined && dto.expiresAt !== undefined) {
+        throw new BadRequestException(
+          'expiresIn and expiresAt cannot be provided together',
+        );
+      }
 
-      span.setAttribute('link.has_ttl', dto.expiresIn != null);
-      if (dto.expiresIn != null) {
+      let expiresAt: Date | null = null;
+
+      if (dto.expiresAt !== undefined) {
+        expiresAt = new Date(dto.expiresAt);
+
+        if (expiresAt.getTime() <= Date.now()) {
+          throw new BadRequestException('expiresAt must be in the future');
+        }
+        span.setAttribute('link.expires_at_date', dto.expiresAt);
+      } else if (dto.expiresIn !== undefined) {
+        expiresAt = new Date(Date.now() + dto.expiresIn * 1000);
+
         span.setAttribute('link.expires_in_seconds', dto.expiresIn);
+      }
+
+      span.setAttribute('link.has_ttl', expiresAt != null);
+      span.setAttribute('link.has_click_limit', dto.clicksLimit != null);
+
+      if (dto.clicksLimit) {
+        span.setAttribute('link.max_click_limit', dto.clicksLimit);
       }
 
       let lastError: unknown;

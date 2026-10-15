@@ -1,4 +1,12 @@
-import { IsInt, IsOptional, IsUrl, Max, Min } from 'class-validator';
+import {
+  IsDateString,
+  IsInt,
+  IsOptional,
+  IsUrl,
+  Max,
+  Min,
+  ValidateIf,
+} from 'class-validator';
 
 export class CreateLinkDto {
   @IsUrl(
@@ -20,5 +28,15 @@ export class CreateLinkDto {
   @IsInt()
   @Min(60)
   @Max(2592000)
+  @ValidateIf((dto) => dto.expiresAt === undefined, {
+    message: 'expiresIn and expiresAt cannot be provided together',
+  })
   expiresIn?: number;
+
+  @IsOptional()
+  @IsDateString()
+  @ValidateIf((dto) => dto.expiresIn === undefined, {
+    message: 'expiresIn and expiresAt cannot be provided together',
+  })
+  expiresAt?: string;
 }

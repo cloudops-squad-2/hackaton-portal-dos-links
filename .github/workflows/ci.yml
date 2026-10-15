@@ -5,6 +5,7 @@ on:
     branches: ["main", "develop"]
   pull_request:
     branches: ["main", "develop"]
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
@@ -36,6 +37,25 @@ jobs:
 
       - name: Run gitleaks
         run: gitleaks detect --source . --redact --verbose
+
+  # ---------------------------------------------------------------
+  # SAST (Semgrep)
+  # ---------------------------------------------------------------
+  sast:
+    name: SAST (Semgrep)
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Semgrep
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: >-
+            p/typescript
+            p/nodejs
+            p/secrets
+        continue-on-error: true
 
   # ---------------------------------------------------------------
   # API (TypeScript)
@@ -71,7 +91,6 @@ jobs:
 
   # ---------------------------------------------------------------
   # Build images (api, frontend)
-  # Keep both images built on every commit; no path filters.
   # ---------------------------------------------------------------
   build:
     name: Build & push (${{ matrix.service }})
@@ -83,8 +102,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # service: [api, frontend]
-        service: [api]
+        service: [api, frontend]
     steps:
       - name: Checkout
         uses: actions/checkout@v4

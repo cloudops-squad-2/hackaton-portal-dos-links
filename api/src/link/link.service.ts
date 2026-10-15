@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   GoneException,
   Injectable,
   NotFoundException,
@@ -56,6 +57,36 @@ export class LinkService {
       }
 
       let lastError: unknown;
+
+      if (dto.customCode) {
+        try {
+          const link = await this.prismaService.link.create({
+            data: {
+              code: dto.customCode,
+              originalUrl: dto.url,
+              clickLimit: dto.clicksLimit ?? null,
+              expiresAt,
+            },
+          });
+
+          span.setAttribute('link.code', link.code);
+          span.setStatus({ code: SpanStatusCode.OK });
+          linksCreatedCounter.add(1);
+
+          return link;
+        } catch (error) {
+          lastError = error;
+          const isUniqueConstraintError =
+            error instanceof PrismaClientKnownRequestError &&
+            error.code === 'P2002';
+
+          if (!isUniqueConstraintError) {
+            throw error;
+          }
+
+          throw new ConflictException('Link code already taken');
+        }
+      }
 
       for (let attempts = 0; attempts < 3; attempts++) {
         try {

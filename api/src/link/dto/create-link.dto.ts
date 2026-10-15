@@ -8,6 +8,7 @@ import {
   Max,
   MaxLength,
   Min,
+  MinLength,
   ValidateIf,
 } from 'class-validator';
 
@@ -42,4 +43,10 @@ export class CreateLinkDto {
   @Min(4)
   @Max(10)
   codeSize?: number = 6;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(4)
+  @MaxLength(8)
+  customCode?: string;
 }

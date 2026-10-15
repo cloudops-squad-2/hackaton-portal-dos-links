@@ -59,7 +59,7 @@ export class LinkService {
 
       for (let attempts = 0; attempts < 3; attempts++) {
         try {
-          const code = nanoid(7);
+          const code = nanoid(dto.codeSize);
           const link = await this.prismaService.link.create({
             data: {
               code,

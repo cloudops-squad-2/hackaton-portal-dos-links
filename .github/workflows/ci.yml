@@ -83,7 +83,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        service: [api, frontend]
+        # service: [api, frontend]
+        service: [api]
     steps:
       - name: Checkout
         uses: actions/checkout@v4

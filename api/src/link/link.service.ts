@@ -5,37 +5,72 @@ import { nanoid } from 'nanoid';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/client';
 import { Link } from '../generated/prisma/client.js';
 import { ListLinksDto } from './dto/list-links.dto.js';
+import { trace, SpanStatusCode } from '@opentelemetry/api';
+import {
+  linksCreatedCounter,
+  linksExpiredCounter,
+  linksRedirectedCounter,
+} from './metrics.js';
+
+const tracer = trace.getTracer('portal-dos-links');
 
 @Injectable()
 export class LinkService {
   constructor(private readonly prismaService: PrismaService) {}
 
   async create(dto: CreateLinkDto): Promise<Link> {
-    const expiresAt = dto.expiresIn
-      ? new Date(Date.now() + dto.expiresIn * 1000)
-      : null;
+    const span = tracer.startSpan('link.create');
 
-    for (let attempts = 0; attempts < 3; attempts++) {
-      try {
-        return await this.prismaService.link.create({
-          data: {
-            code: nanoid(7),
-            originalUrl: dto.url,
-            expiresAt,
-          },
-        });
-      } catch (error) {
-        const isUniqueConstraintError =
-          error instanceof PrismaClientKnownRequestError &&
-          error.code === 'P2002';
+    try {
+      const expiresAt = dto.expiresIn
+        ? new Date(Date.now() + dto.expiresIn * 1000)
+        : null;
 
-        if (!isUniqueConstraintError || attempts === 2) {
-          throw error;
+      span.setAttribute('link.has_ttl', dto.expiresIn != null);
+      if (dto.expiresIn != null) {
+        span.setAttribute('link.expires_in_seconds', dto.expiresIn);
+      }
+
+      let lastError: unknown;
+
+      for (let attempts = 0; attempts < 3; attempts++) {
+        try {
+          const code = nanoid(7);
+          const link = await this.prismaService.link.create({
+            data: {
+              code,
+              originalUrl: dto.url,
+              expiresAt,
+            },
+          });
+
+          span.setAttribute('link.code', link.code);
+          span.setAttribute('link.retry_count', attempts);
+          span.setStatus({ code: SpanStatusCode.OK });
+
+          linksCreatedCounter.add(1);
+
+          return link;
+        } catch (error) {
+          lastError = error;
+          const isUniqueConstraintError =
+            error instanceof PrismaClientKnownRequestError &&
+            error.code === 'P2002';
+
+          if (!isUniqueConstraintError || attempts === 2) {
+            throw error;
+          }
         }
       }
-    }
 
-    throw new Error('Failed to create link after maximum attempts');
+      throw lastError ?? new Error('Failed to create link after maximum attempts');
+    } catch (error) {
+      span.recordException(error as Error);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: (error as Error).message });
+      throw error;
+    } finally {
+      span.end();
+    }
   }
 
   async listLinks(query: ListLinksDto) {
@@ -63,21 +98,53 @@ export class LinkService {
   }
 
   async resolve(code: string): Promise<string> {
-    const link = await this.prismaService.link.findUnique({ where: { code } });
+    const span = tracer.startSpan('link.resolve');
+    span.setAttribute('link.code', code);
 
-    if (!link) {
-      throw new NotFoundException('Link not found');
+    try {
+      const link = await this.prismaService.link.findUnique({ where: { code } });
+
+      if (!link) {
+        span.setAttribute('link.found', false);
+        span.setStatus({ code: SpanStatusCode.ERROR, message: 'Link not found' });
+        throw new NotFoundException('Link not found');
+      }
+
+      span.setAttribute('link.found', true);
+
+      if (link.expiresAt && link.expiresAt <= new Date()) {
+        span.setAttribute('link.expired', true);
+        span.setStatus({ code: SpanStatusCode.ERROR, message: 'Link has expired' });
+        linksExpiredCounter.add(1);
+        throw new GoneException('Link has expired');
+      }
+
+      span.setAttribute('link.expired', false);
+
+      await this.prismaService.link.update({
+        where: { code },
+        data: { clickCount: { increment: 1 } },
+      });
+
+      linksRedirectedCounter.add(1);
+
+      span.setAttribute('link.original_url', link.originalUrl);
+      span.setAttribute('link.click_count', link.clickCount + 1);
+      span.setStatus({ code: SpanStatusCode.OK });
+
+      return link.originalUrl;
+    } catch (error) {
+      // Only record as exception if not already handled above (NestJS HTTP exceptions are expected)
+      if (
+        !(error instanceof NotFoundException) &&
+        !(error instanceof GoneException)
+      ) {
+        span.recordException(error as Error);
+        span.setStatus({ code: SpanStatusCode.ERROR, message: (error as Error).message });
+      }
+      throw error;
+    } finally {
+      span.end();
     }
-
-    if (link.expiresAt && link.expiresAt <= new Date()) {
-      throw new GoneException('Link has expired');
-    }
-
-    await this.prismaService.link.update({
-      where: { code },
-      data: { clickCount: { increment: 1 } },
-    });
-
-    return link.originalUrl;
   }
 }

@@ -83,14 +83,14 @@ Status legend: `[ ]` todo · `[x]` done · `[-]` in progress
 
 ## 8 — Docker Compose
 
-- [ ] **TASK-DOCKER-01** Write `docker-compose.yml` at the repo root with three services: `postgres`, `api`, `frontend`, all on a shared bridge network `portal-net` — `REQ-DC-01`
-- [ ] **TASK-DOCKER-02** Configure `build.context` for `api` (`./api`) and `frontend` (`./frontend`) so the compose file builds from source — `REQ-DC-02`
-- [ ] **TASK-DOCKER-03** Expose ports: `api` → `3000:3000` (HTTP) and `4317:4317` (OTLP/gRPC); `frontend` → `80:80`; `postgres` → `5432:5432` — `REQ-DC-03`, `REQ-DC-04`, `REQ-DC-05`
-- [ ] **TASK-DOCKER-04** Declare named volume `postgres_data` mounted at `/var/lib/postgresql/data` in the `postgres` service — `REQ-DC-06`
-- [ ] **TASK-DOCKER-05** Wire all environment variables: `DATABASE_URL`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_SERVICE_NAME`, `PORT` for `api`; `VITE_API_URL` for `frontend` — `REQ-DC-07`
-- [ ] **TASK-DOCKER-06** Set `depends_on` ordering: `api` depends on `postgres` (`condition: service_healthy`); `frontend` depends on `api` (`condition: service_started`) — `REQ-DC-08`
-- [ ] **TASK-DOCKER-07** Add `healthcheck` to `postgres` using `pg_isready -U $${POSTGRES_USER}` (interval 5s, timeout 5s, retries 5) — `REQ-DC-09`
-- [ ] **TASK-DOCKER-08** Create `.env.example` at repo root documenting `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `VITE_API_URL`, `OTEL_SERVICE_NAME` with placeholder values and inline comments — `REQ-DC-10`
+- [x] **TASK-DOCKER-01** Write `docker-compose.yml` at the repo root with three services: `postgres`, `api`, `frontend`, all on a shared bridge network `portal-net` — `REQ-DC-01`
+- [x] **TASK-DOCKER-02** Configure `build.context` for `api` (`./api`) and `frontend` (`./frontend`) so the compose file builds from source — `REQ-DC-02`
+- [x] **TASK-DOCKER-03** Expose ports: `api` → `3000:3000` (HTTP) and `4317:4317` (OTLP/gRPC); `frontend` → `80:80`; `postgres` → `5432:5432` — `REQ-DC-03`, `REQ-DC-04`, `REQ-DC-05`
+- [x] **TASK-DOCKER-04** Declare named volume `postgres_data` mounted at `/var/lib/postgresql/data` in the `postgres` service — `REQ-DC-06`
+- [x] **TASK-DOCKER-05** Wire all environment variables: `DATABASE_URL`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_SERVICE_NAME`, `PORT` for `api`; `VITE_API_URL` for `frontend` — `REQ-DC-07`
+- [x] **TASK-DOCKER-06** Set `depends_on` ordering: `api` depends on `postgres` (`condition: service_healthy`); `frontend` depends on `api` (`condition: service_started`) — `REQ-DC-08`
+- [x] **TASK-DOCKER-07** Add `healthcheck` to `postgres` using `pg_isready -U $${POSTGRES_USER}` (interval 5s, timeout 5s, retries 5) — `REQ-DC-09`
+- [x] **TASK-DOCKER-08** Create `.env.example` at repo root documenting `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `VITE_API_URL`, `OTEL_SERVICE_NAME` with placeholder values and inline comments — `REQ-DC-10`
 
 ## Notes
 

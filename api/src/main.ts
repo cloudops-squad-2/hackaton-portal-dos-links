@@ -1,3 +1,4 @@
+import './tracing.js'; // must be first — starts OTel SDK before any other module loads
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
 import {

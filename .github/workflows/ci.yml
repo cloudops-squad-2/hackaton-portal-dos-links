@@ -10,7 +10,6 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_BASENAME: portal-dos-links
-  # Pinned tool versions
   NODE_VERSION: "22"
   GITLEAKS_VERSION: "8.21.2"
 
@@ -39,7 +38,9 @@ jobs:
         run: gitleaks detect --source . --redact --verbose
 
   # ---------------------------------------------------------------
-  # SAST (Semgrep)
+  # SAST (Semgrep) — non-blocking, runs in parallel with other jobs.
+  # Deliberately excluded from the `needs` of `build` so a false
+  # positive never blocks a deploy.
   # ---------------------------------------------------------------
   sast:
     name: SAST (Semgrep)
@@ -90,12 +91,42 @@ jobs:
         run: npm test
 
   # ---------------------------------------------------------------
+  # Frontend (React + Vite)
+  # ---------------------------------------------------------------
+  test-frontend:
+    name: Frontend tests
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: ./frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        # --ignore-scripts prevents malicious postinstall execution
+        run: npm ci --ignore-scripts
+
+      - name: Run tests
+        run: npm test
+
+      - name: Typecheck and build
+        run: npm run build
+
+  # ---------------------------------------------------------------
   # Build images (api, frontend)
   # ---------------------------------------------------------------
   build:
     name: Build & push (${{ matrix.service }})
     runs-on: ubuntu-24.04
-    needs: [gitleaks, test-api]
+    needs: [gitleaks, test-api, test-frontend]
     permissions:
       contents: read
       packages: write
@@ -143,4 +174,40 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
- 
+  # ---------------------------------------------------------------
+  # GitOps handoff: write the new image tag into the config repo.
+  # ArgoCD detects the diff and deploys automatically.
+  # Requires CONFIG_REPO_PAT secret (write access to the gitops repo).
+  # ---------------------------------------------------------------
+  update-manifests:
+    name: Update GitOps repo
+    runs-on: ubuntu-24.04
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    # Serialize bumps — prevents race when two commits land in quick succession.
+    concurrency:
+      group: gitops-update
+      cancel-in-progress: false
+    steps:
+      - name: Checkout GitOps repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/hackaton-portal-dos-links-gitops
+          ref: develop
+          token: ${{ secrets.CONFIG_REPO_PAT }}
+
+      - name: Bump image tags
+        run: |
+          OWNER="${GITHUB_REPOSITORY_OWNER,,}"
+          for svc in api frontend; do
+            NAME="${REGISTRY}/${OWNER}/${IMAGE_BASENAME}-${svc}" TAG="${GITHUB_SHA::7}" \
+              yq -i '(.images[] | select(.name == strenv(NAME))).newTag = strenv(TAG)' k8s/kustomization.yaml
+          done
+
+      - name: Commit and push
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore(deploy): bump images to ${GITHUB_SHA::7}" || exit 0
+          git pull --rebase origin develop
+          git push origin HEAD:develop

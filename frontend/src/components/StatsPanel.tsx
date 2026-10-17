@@ -26,8 +26,8 @@ const PUBLIC_BASE: string =
   (import.meta.env.VITE_PUBLIC_BASE_URL as string | undefined) ?? '';
 
 function buildShortUrl(code: string): string {
-  const base = PUBLIC_BASE.replace(/\/$/, '');
-  return base ? `${base}/${code}` : `/${code}`;
+  const base = PUBLIC_BASE.replace(/\/$/, '') || window.location.origin;
+  return `${base}/s/${code}`;
 }
 
 // ── Componente ─────────────────────────────────────────────────────────────

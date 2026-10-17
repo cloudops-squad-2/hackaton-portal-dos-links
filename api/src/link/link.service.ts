@@ -17,6 +17,7 @@ import {
   linksExpiredCounter,
   linksRedirectedCounter,
 } from './metrics.js';
+import { timestamp } from 'rxjs';
 
 const tracer = trace.getTracer('portal-dos-links');
 
@@ -160,6 +161,60 @@ export class LinkService {
     };
   }
 
+  async getLinkStats(code: string) {
+    const span = tracer.startSpan('link.stats');
+    span.setAttribute('link.code', code);
+
+    try {
+      const link = await this.prismaService.link.findUnique({
+        where: { code },
+        include: {
+          clicks: {
+            select: {
+              timestamp: true,
+            },
+            orderBy: {
+              timestamp: 'desc',
+            },
+          },
+        },
+      });
+
+      if (!link) {
+        span.setAttribute('link.found', false);
+        span.setStatus({
+          code: SpanStatusCode.ERROR,
+          message: 'Link not found',
+        });
+
+        throw new NotFoundException('Link not found');
+      }
+
+      span.setAttribute('link.found', true);
+      span.setAttribute('link.click_count', link.clickCount);
+      span.setStatus({ code: SpanStatusCode.OK });
+
+      return link;
+    } catch (error) {
+      if (!(error instanceof NotFoundException)) {
+        span.recordException(
+          error instanceof Error ? error : new Error(String(error)),
+        );
+        span.setStatus({
+          code: SpanStatusCode.ERROR,
+          message:
+            error instanceof Error
+              ? error.message
+              : 'Failed to retrieve link stats',
+        });
+      }
+
+      throw error;
+    } finally {
+      span.end();
+    }
+  }
+
   async resolve(code: string): Promise<string> {
     const span = tracer.startSpan('link.resolve');
     span.setAttribute('link.code', code);
@@ -203,10 +258,13 @@ export class LinkService {
 
       span.setAttribute('link.expired', false);
 
-      await this.prismaService.link.update({
-        where: { code },
-        data: { clickCount: { increment: 1 } },
-      });
+      await this.prismaService.$transaction([
+        this.prismaService.link.update({
+          where: { code },
+          data: { clickCount: { increment: 1 } },
+        }),
+        this.prismaService.linkClick.create({ data: { linkId: link.id } }),
+      ]);
 
       linksRedirectedCounter.add(1);
 

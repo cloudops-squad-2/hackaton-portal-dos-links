@@ -2,6 +2,7 @@ import {
   ConflictException,
   BadRequestException,
   GoneException,
+  NotFoundException,
 } from '@nestjs/common';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/client';
 import { PrismaService } from '../database/prisma.service.js';
@@ -20,6 +21,9 @@ describe('LinkService', () => {
       update: vi.fn(),
     },
     $transaction: vi.fn(),
+    linkClick: {
+      create: vi.fn(),
+    },
   };
 
   beforeEach(async () => {
@@ -196,6 +200,69 @@ describe('LinkService', () => {
       expect(result.data).toEqual([]);
       expect(result.meta.total).toBe(0);
       expect(result.meta.totalPages).toBe(0);
+    });
+  });
+
+  describe('getLinkStats', () => {
+    it('should return link stats with click history', async () => {
+      const clicks = [
+        { timestamp: new Date('2026-10-17T14:30:00.000Z') },
+        { timestamp: new Date('2026-10-17T13:15:00.000Z') },
+      ];
+
+      prismaMock.link.findUnique.mockResolvedValue({
+        id: 'link-id',
+        code: 'abc1234',
+        originalUrl: 'https://example.com',
+        clickCount: 2,
+        clicks,
+      });
+
+      const result = await linkService.getLinkStats('abc1234');
+
+      expect(result).toEqual({
+        id: 'link-id',
+        code: 'abc1234',
+        originalUrl: 'https://example.com',
+        clickCount: 2,
+        clicks,
+      });
+
+      expect(prismaMock.link.findUnique).toHaveBeenCalledWith({
+        where: { code: 'abc1234' },
+        include: {
+          clicks: {
+            select: {
+              timestamp: true,
+            },
+            orderBy: {
+              timestamp: 'desc',
+            },
+          },
+        },
+      });
+    });
+
+    it('should throw NotFoundException when the link does not exist', async () => {
+      prismaMock.link.findUnique.mockResolvedValue(null);
+
+      await expect(linkService.getLinkStats('unknown')).rejects.toThrow(
+        NotFoundException,
+      );
+
+      expect(prismaMock.link.findUnique).toHaveBeenCalledWith({
+        where: { code: 'unknown' },
+        include: {
+          clicks: {
+            select: {
+              timestamp: true,
+            },
+            orderBy: {
+              timestamp: 'desc',
+            },
+          },
+        },
+      });
     });
   });
 

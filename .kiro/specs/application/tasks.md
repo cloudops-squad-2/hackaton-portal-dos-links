@@ -25,13 +25,14 @@ Status legend: `[ ]` todo · `[x]` done · `[-]` in progress
 
 - [x] **TASK-DB-01** Set up Prisma migrations folder
 - [ ] **TASK-DB-02** Create and run initial migration (`prisma migrate dev`)
+- [x] **TASK-DB-03** Add `docker-compose.yml` at repo root for local PostgreSQL + API + frontend dev setup
 
 ---
 
 ## 3 — Frontend
 
 - [ ] **TASK-FE-01** Scaffold frontend project (React + Vite recommended; output to `frontend/`)
-- [ ] **TASK-FE-02** Add `Dockerfile` (multi-stage: Vite build → nginx:alpine)
+- [x] **TASK-FE-02** Add `Dockerfile` (multi-stage: Vite build → nginx:alpine)
 - [ ] **TASK-FE-03** Implement create-link form (`url` + optional `expiresIn`)
 - [ ] **TASK-FE-04** Implement link list view with `clickCount`, `createdAt`, expiry badge
 - [ ] **TASK-FE-05** Add copy-to-clipboard button per link
@@ -47,10 +48,12 @@ Status legend: `[ ]` todo · `[x]` done · `[-]` in progress
 
 - [x] **TASK-CI-01** Create `.github/workflows/ci.yml` with `gitleaks`, `test-api`, `build` jobs
 - [x] **TASK-CI-02** Add `prisma generate` step in `test-api` job before `tsc` compile
-- [ ] **TASK-CI-03** Add `test-frontend` job (install → test → build); gate `build` matrix on it
-- [ ] **TASK-CI-04** Add `update-manifests` job that checks out the config repo and bumps image tags via Kustomize
-- [ ] **TASK-CI-05** Add `CONFIG_REPO_PAT` secret to the app repo on GitHub
-- [ ] **TASK-CI-06** Add concurrency group to `update-manifests` to prevent race conditions
+- [x] **TASK-CI-03** Add `test-frontend` job (install → test → build); gate `build` matrix on it
+- [x] **TASK-CI-04** Add `update-manifests` job that checks out the config repo, bumps image tags via `yq` and opens a PR to `develop`
+- [ ] **TASK-CI-05** Add `CONFIG_REPO_PAT` secret to the app repo on GitHub (needs `repo` + `workflow` scope)
+- [x] **TASK-CI-06** Add concurrency group to `update-manifests` to prevent race conditions
+- [x] **TASK-CI-07** Add `sast` job with Semgrep (`p/typescript`, `p/nodejs`, `p/secrets`) — non-blocking (`continue-on-error: true`)
+- [x] **TASK-CI-08** Add `workflow_dispatch` trigger for manual pipeline runs from GitHub UI
 
 ---
 

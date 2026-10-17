@@ -16,8 +16,9 @@ import {
   linksCreatedCounter,
   linksExpiredCounter,
   linksRedirectedCounter,
+  linksNotFoundCounter,
+  linksClickLimitReachedCounter,
 } from './metrics.js';
-import { timestamp } from 'rxjs';
 
 const tracer = trace.getTracer('portal-dos-links');
 
@@ -230,6 +231,7 @@ export class LinkService {
           code: SpanStatusCode.ERROR,
           message: 'Link not found',
         });
+        linksNotFoundCounter.add(1);
         throw new NotFoundException('Link not found');
       }
 
@@ -252,7 +254,7 @@ export class LinkService {
           code: SpanStatusCode.ERROR,
           message: 'Link click limit reached',
         });
-
+        linksClickLimitReachedCounter.add(1);
         throw new GoneException('Link click limit reached');
       }
 

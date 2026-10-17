@@ -36,15 +36,37 @@ services:
       context: ./api
     ports:
       - "3000:3000"
-      - "4317:4317"
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://localhost:4317
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-portal-dos-links-api}
+      OTEL_SEMCONV_STABILITY_OPT_IN: "http"
+      OTEL_TRACES_SAMPLER: "parentbased_traceidratio"
+      OTEL_TRACES_SAMPLER_ARG: "1.0"
       PORT: "3000"
     depends_on:
       migration:
         condition: service_completed_successfully
+      otel-collector:
+        condition: service_started
+    networks:
+      - portal-net
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.163.1
+    command: ["--config=/etc/otel/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel/otel-collector-config.yaml:ro
+    ports:
+      - "4317:4317"   # otlp-grpc (API → Collector)
+      - "4318:4318"   # otlp-http (browser → Collector)
+      - "8889:8889"   # prometheus metrics scrape
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:13133/"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     networks:
       - portal-net
 

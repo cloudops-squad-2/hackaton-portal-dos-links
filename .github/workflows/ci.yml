@@ -204,10 +204,17 @@ jobs:
               yq -i '(.images[] | select(.name == strenv(NAME))).newTag = strenv(TAG)' k8s/kustomization.yaml
           done
 
-      - name: Commit and push
+      - name: Open PR
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -am "chore(deploy): bump images to ${GITHUB_SHA::7}" || exit 0
-          git pull --rebase origin develop
-          git push origin HEAD:develop
+          git checkout -b deploy/${GITHUB_SHA::7}
+          git commit -am "chore(deploy): bump images to ${GITHUB_SHA::7}"
+          git push origin deploy/${GITHUB_SHA::7}
+          gh pr create \
+            --title "chore(deploy): bump images to ${GITHUB_SHA::7}" \
+            --body "Automated image bump triggered by ${{ github.repository }}@${GITHUB_SHA::7}" \
+            --base develop \
+            --head deploy/${GITHUB_SHA::7}
+        env:
+          GH_TOKEN: ${{ secrets.CONFIG_REPO_PAT }}

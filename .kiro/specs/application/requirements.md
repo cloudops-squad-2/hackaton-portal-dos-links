@@ -59,8 +59,10 @@ The GitOps/config repository owns all Kubernetes manifests and is watched by Arg
 - **REQ-CI-03** API job: `npm ci` → `prisma generate` → `tsc` compile → `vitest run`. Must pass before any image is built.
 - **REQ-CI-04** Frontend job: install → test → build. Must pass before image is built.
 - **REQ-CI-05** Matrix build for `api` and `frontend` images pushed to GHCR. Images are only pushed on `push` events (not PRs). Tags use the 7-character short SHA.
-- **REQ-CI-06** `update-manifests` job runs only on push events. It checks out the config repo using `CONFIG_REPO_PAT`, runs `kustomize edit set image` for both services, and commits the tag bump back to the config repo so ArgoCD syncs automatically.
-- **REQ-CI-07** Concurrency group on `update-manifests` prevents race conditions when two commits land in quick succession.
+- **REQ-CI-06** `update-manifests` job runs only on push to `develop`. It checks out the config repo using `CONFIG_REPO_PAT`, bumps image tags in `k8s/kustomization.yaml` via `yq`, creates a dedicated `deploy/<sha>` branch, and opens a PR to `develop` using `gh pr create`. ArgoCD syncs after the PR is merged.
+- **REQ-CI-07** Concurrency group on `update-manifests` (`cancel-in-progress: false`) prevents race conditions when two commits land in quick succession.
+- **REQ-CI-08** SAST job with Semgrep (`p/typescript`, `p/nodejs`, `p/secrets`) runs in parallel — non-blocking (`continue-on-error: true`), deliberately excluded from `build` gates.
+- **REQ-CI-09** `workflow_dispatch` trigger enables manual pipeline runs from the GitHub UI without a code push.
 
 ---
 

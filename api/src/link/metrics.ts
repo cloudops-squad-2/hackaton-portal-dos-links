@@ -16,3 +16,17 @@ export const linksRedirectedCounter = meter.createCounter('links.redirected', {
 export const linksExpiredCounter = meter.createCounter('links.expired', {
   description: 'Number of redirect attempts on expired links',
 });
+
+/** Incremented every time a redirect attempt is made on a non-existent link code. */
+export const linksNotFoundCounter = meter.createCounter('links.not_found', {
+  description: 'Number of redirect attempts for non-existent short links',
+});
+
+/** Incremented every time a redirect attempt is rejected due to the click limit. */
+export const linksClickLimitReachedCounter = meter.createCounter(
+  'links.click_limit_reached',
+  {
+    description:
+      'Number of redirect attempts rejected because click limit was reached',
+  },
+);

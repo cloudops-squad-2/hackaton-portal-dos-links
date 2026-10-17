@@ -62,8 +62,9 @@ Status legend: `[ ]` todo · `[x]` done · `[-]` in progress
 - [x] **TASK-OBS-01** Install `@opentelemetry/sdk-node`, `@opentelemetry/auto-instrumentations-node`, OTLP exporter
 - [x] **TASK-OBS-02** Initialize OTel SDK in `main.ts` before NestJS bootstrap
 - [x] **TASK-OBS-03** Add manual spans in `LinkService.create` and `LinkService.resolve`
-- [x] **TASK-OBS-04** Export metrics: `links.created`, `links.redirected`, `links.expired`, HTTP duration histogram
+- [x] **TASK-OBS-04** Export metrics: `links.created`, `links.redirected`, `links.expired`, `links.not_found`, `links.click_limit_reached`, HTTP duration histogram
 - [x] **TASK-OBS-05** Add `OTEL_EXPORTER_OTLP_ENDPOINT` and `OTEL_SERVICE_NAME` to env var documentation
+- [x] **TASK-OBS-06** Add `otel-collector` service to `docker-compose.yml`; fix `OTEL_EXPORTER_OTLP_ENDPOINT` (localhost → service name), add `OTEL_SEMCONV_STABILITY_OPT_IN=http`, `OTEL_TRACES_SAMPLER`; create `otel-collector-config.yaml`
 
 ---
 

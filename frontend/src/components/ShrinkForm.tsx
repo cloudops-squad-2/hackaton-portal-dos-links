@@ -70,8 +70,8 @@ const PUBLIC_BASE: string =
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function buildShortUrl(code: string): string {
-  const base = PUBLIC_BASE.replace(/\/$/, '');
-  return base ? `${base}/${code}` : `/${code}`;
+  const base = PUBLIC_BASE.replace(/\/$/, '') || window.location.origin;
+  return `${base}/s/${code}`;
 }
 
 /**

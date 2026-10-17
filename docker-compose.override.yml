@@ -1,0 +1,4 @@
+services:
+  frontend:
+    volumes:
+      - ./frontend/nginx.compose.conf:/etc/nginx/conf.d/app.conf:ro

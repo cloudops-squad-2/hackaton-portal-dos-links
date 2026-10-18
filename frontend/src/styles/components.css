@@ -1901,12 +1901,16 @@ body, #root, .main-content, .page-wrapper {
   animation-delay: 0.08s;
 }
 
-/* Piscar: escala vertical só da pupila */
-.dra-miuda--idle .dra-miuda__pupil--left {
-  animation: miuda-blink 5s ease-in-out infinite;
+/* Piscada completa e discreta: olhos e cílios juntos, sem mover cabeça/pescoço.
+   Três piscadas curtas com espaçamentos variados, em um ciclo de 9s. */
+.dra-miuda__eye {
+  transform-box: fill-box;
+  transform-origin: center center;
+  animation: miuda-whole-eye-blink 9s linear infinite;
 }
-.dra-miuda--idle .dra-miuda__pupil--right {
-  animation: miuda-blink 5s ease-in-out 0.06s infinite;
+@keyframes miuda-whole-eye-blink {
+  0%, 10%, 12.2%, 42%, 44.2%, 75%, 77.2%, 100% { transform: scaleY(1); }
+  11%, 43%, 76% { transform: scaleY(0.08); }
 }
 
 .dra-miuda--idle .dra-miuda__smile      { opacity: 1; }
@@ -1999,8 +2003,9 @@ body, #root, .main-content, .page-wrapper {
 
 /* ── ERROR ────────────────────────────────────────────── */
 
-.dra-miuda--error .dra-miuda__head {
-  transform-origin: 55px 44px;
+/* A cabeça não gira isoladamente: evita abrir espaço entre pescoço e jaleco. */
+.dra-miuda-svg.dra-miuda--error {
+  transform-origin: center;
   animation: miuda-wobble 0.5s ease-in-out 3;
 }
 
@@ -2029,8 +2034,7 @@ body, #root, .main-content, .page-wrapper {
   .dra-miuda--idle .dra-miuda__body,
   .dra-miuda--idle .dra-miuda__arms,
   .dra-miuda--idle .dra-miuda__ray-gun,
-  .dra-miuda--idle .dra-miuda__pupil--left,
-  .dra-miuda--idle .dra-miuda__pupil--right,
+  .dra-miuda__eye,
   .dra-miuda-svg.dra-miuda--working,
   .dra-miuda--working .dra-miuda__crystal,
   .dra-miuda--working .dra-miuda__wave--1,
@@ -2044,7 +2048,7 @@ body, #root, .main-content, .page-wrapper {
   .dra-miuda--success .dra-miuda__star--1,
   .dra-miuda--success .dra-miuda__star--2,
   .dra-miuda--success .dra-miuda__star--3,
-  .dra-miuda--error .dra-miuda__head,
+  .dra-miuda-svg.dra-miuda--error,
   .dra-miuda--error .dra-miuda__sweat-drop {
     animation: none;
   }
@@ -2496,3 +2500,261 @@ body, #root, .main-content, .page-wrapper {
 .link-qr { background: #fff; padding: 4px; width: 154px; height: 154px; max-width: 100%; flex: none; border-radius: 5px; }
 .link-copy-status { padding-block: 8px; color: #7fe7d8; }
 @media (max-width: 480px) { .link-qr-panel { align-items: flex-start; } .link-qr { width: 132px; height: 132px; } }
+
+/* ══════════════════════════════════
+   Encolhe! V2 — narrativa, dois raios e hierarquia visual
+   Mantém tokens e componentes existentes; sem fontes externas.
+══════════════════════════════════ */
+
+.lab-story {
+  margin-top: 23px;
+  max-width: 590px;
+  border: 1px solid rgba(45, 212, 191, .22);
+  border-radius: 12px;
+  background: rgba(19, 42, 62, .74);
+  color: #d1e7ed;
+}
+.lab-story summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 13px 16px;
+  cursor: pointer;
+  color: #9eefe6;
+  font-size: .84rem;
+  font-weight: 750;
+  list-style: none;
+}
+.lab-story summary::-webkit-details-marker { display: none; }
+.lab-story summary span { font-size: 1.2rem; transition: transform .2s ease; }
+.lab-story[open] summary span { transform: rotate(90deg); }
+.lab-story summary:hover { color: #fff; }
+.lab-story-body {
+  padding: 0 16px 17px;
+  font-size: .87rem;
+  line-height: 1.75;
+  color: #b5d0df;
+  display: grid;
+  gap: 10px;
+  animation: fadeUp .24s ease-out both;
+}
+
+/* Respostas diferentes do laboratório, aproveitando o SVG existente. */
+.lab-hero-visual { transition: filter .3s ease; }
+.lab-hero-visual--custom .hero-ray--1::before {
+  border-color: rgba(45, 212, 191, .65);
+  border-style: dashed;
+}
+.lab-hero-visual--custom .hero-ray--2::before {
+  border-color: rgba(255, 194, 90, .48);
+  animation-duration: 19s;
+}
+.lab-hero-visual--custom .hero-character-frame {
+  box-shadow: 0 0 0 8px rgba(255, 194, 90, .04), 0 0 35px rgba(255, 194, 90, .18);
+}
+.lab-hero-visual--working .hero-character-frame {
+  animation: v2-lab-charge .62s ease-in-out infinite alternate;
+}
+.lab-hero-visual--working .hero-ray--1::before {
+  border-color: rgba(249, 115, 22, .85);
+  animation: spin 1.6s linear infinite;
+}
+.lab-hero-visual--working .hero-ray--2::before {
+  border-color: rgba(45, 212, 191, .75);
+  animation: spin 2.2s linear infinite reverse;
+}
+.lab-hero-visual--success .hero-character-frame {
+  animation: v2-lab-success .85s ease-out 1;
+}
+.lab-hero-visual--success .hero-ray--1::before,
+.lab-hero-visual--success .hero-ray--2::before {
+  border-color: rgba(45, 212, 191, .85);
+}
+.lab-hero-visual--error .hero-ray--1::before { border-color: rgba(248, 113, 113, .65); }
+.lab-character-caption {
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+@keyframes v2-lab-charge {
+  to { box-shadow: 0 0 0 9px rgba(249, 115, 22, .08), 0 0 52px rgba(249, 115, 22, .38); }
+}
+@keyframes v2-lab-success {
+  45% { box-shadow: 0 0 0 13px rgba(45, 212, 191, .12), 0 0 75px rgba(45, 212, 191, .6); }
+}
+
+/* Formulário: foco em um link, duas escolhas, uma ação. */
+.v2-shrink-card .shrink-card-header { margin-bottom: 24px; }
+.v2-url-input { display: block; width: 100%; min-height: 52px; }
+.v2-mode-selector { margin-top: 8px; }
+.v2-mode-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.v2-mode-card {
+  position: relative;
+  align-items: flex-start;
+  gap: 5px;
+  min-height: 170px;
+  padding: 18px;
+  text-align: left;
+  border-radius: 12px;
+  background: #102337;
+  border-color: #365269;
+}
+.v2-mode-card.active {
+  border-color: #f59e45;
+  background: linear-gradient(135deg, rgba(249, 115, 22, .14), rgba(21, 49, 66, .8));
+  box-shadow: inset 0 0 0 1px rgba(249, 115, 22, .1);
+}
+.v2-mode-card--custom.active {
+  border-color: #2dd4bf;
+  background: linear-gradient(135deg, rgba(45, 212, 191, .14), rgba(21, 49, 66, .8));
+}
+.v2-mode-card .mode-option-name { font-size: 1rem; line-height: 1.3; }
+.v2-mode-card .mode-option-size { font-size: .78rem; color: #f5c36e; }
+.v2-mode-card--custom .mode-option-size { color: #84e9dc; }
+.v2-mode-card .mode-option-desc { font-size: .76rem; line-height: 1.48; text-wrap: pretty; }
+.v2-mode-symbol {
+  display: grid;
+  place-items: center;
+  width: 33px;
+  height: 33px;
+  border-radius: 9px;
+  background: rgba(249, 115, 22, .14);
+  color: #ffb569;
+  font-size: 1.55rem;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 5px;
+}
+.v2-mode-card--custom .v2-mode-symbol {
+  background: rgba(45, 212, 191, .14);
+  color: #82e9df;
+}
+.v2-mode-state {
+  margin-top: auto;
+  font-size: .7rem;
+  color: #9debdc;
+  font-weight: 700;
+}
+.v2-mode-state--preview { color: #ffce83; }
+.v2-custom-preview {
+  margin-top: 16px;
+  padding: 17px 18px;
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(45, 212, 191, .3);
+  border-radius: 12px;
+  background: rgba(45, 212, 191, .055);
+  animation: fadeUp .25s ease-out both;
+}
+.v2-custom-head { display: flex; gap: 8px 16px; flex-wrap: wrap; justify-content: space-between; align-items: center; }
+.v2-custom-head strong { color: #d8f8f3; font-size: .85rem; }
+.v2-custom-head span { color: #ffcb7d; font-size: .73rem; font-weight: 650; }
+.v2-custom-example { font-size: .81rem; color: #b8d0da; overflow-wrap: anywhere; }
+.v2-custom-example code { margin: 0 3px; }
+.v2-custom-example span { font-size: .73rem; color: #ffca81; }
+.v2-back-to-ray {
+  width: fit-content;
+  border: 0;
+  padding: 6px 0;
+  background: transparent;
+  color: #94f0e3;
+  font: inherit;
+  font-size: .82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.v2-back-to-ray:hover { text-decoration: underline; }
+.v2-advanced-section { margin-top: 19px; padding-top: 12px; }
+.v2-advanced-section .advanced-fields { margin-top: 10px; }
+.v2-advanced-section .advanced-fields[hidden] { display: none; }
+.v2-submit-wrap { margin-top: 23px; }
+.lab-workspace .v2-submit {
+  width: 100%;
+  min-height: 51px;
+  justify-content: center;
+  border-radius: 10px;
+  font-size: .93rem;
+}
+.v2-submit-note { color: #98b8c8; margin-top: 8px; font-size: .74rem; text-align: center; }
+.v2-copy-feedback { min-height: 1.2em; font-size: .76rem; margin-top: 10px; color: #a5eadd; }
+.v2-result .result-meta { padding-top: 3px; }
+
+@media (max-width: 640px) {
+  .lab-story { margin-top: 16px; }
+  .v2-mode-options { grid-template-columns: 1fr; gap: 9px; }
+  .v2-mode-card { min-height: 0; padding: 14px; }
+  .v2-mode-symbol { margin-bottom: 0; }
+  .lab-workspace .v2-submit { white-space: normal; line-height: 1.3; padding-inline: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lab-story-body, .lab-story summary span, .v2-custom-preview,
+  .lab-hero-visual--working .hero-character-frame,
+  .lab-hero-visual--working .hero-ray--1::before,
+  .lab-hero-visual--working .hero-ray--2::before,
+  .lab-hero-visual--success .hero-character-frame { animation: none !important; transition: none !important; }
+}
+
+/* V2 — ações de histórico. Estilo harmonizado com os controles do laboratório. */
+.v2-history-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0;
+  color: #b8d0da;
+  font-size: .82rem;
+  line-height: 1.5;
+}
+.v2-delete-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 8px 11px;
+  border: 1px solid #a96c67;
+  border-radius: 8px;
+  background: #38232d;
+  color: #ffe0db;
+  font: inherit;
+  font-size: .78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color .2s ease, background .2s ease, transform .2s ease;
+}
+.v2-delete-button:hover:not(:disabled) {
+  background: #55303a;
+  border-color: #f59c88;
+  transform: translateY(-1px);
+}
+.v2-delete-button:focus-visible { outline: 2px solid #fbb6a6; outline-offset: 3px; }
+.v2-delete-button:disabled { opacity: .48; cursor: not-allowed; }
+.v2-delete-button--secondary {
+  border-color: #456d80;
+  background: #183143;
+  color: #d4e9f3;
+}
+.v2-delete-button--secondary:hover:not(:disabled) { border-color: #7edfd3; background: #25465a; }
+.v2-sample {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0;
+  padding: 12px 14px;
+  border: 1px dashed #416b7a;
+  border-radius: 10px;
+  background: #142c3c;
+  color: #c9e0e8;
+  font-size: .82rem;
+  line-height: 1.5;
+}
+.v2-sample strong { color: #ffcf6a; }
+.v2-sample code { color: #7de5d7; overflow-wrap: anywhere; }
+
+/* História da marca: complemento compacto, sem ocupar o espaço do encurtador. */
+.lab-story { margin-top: 0.75rem; }
+.lab-story-body { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+.lab-story-body p { margin: 0.25rem 0; line-height: 1.5; }

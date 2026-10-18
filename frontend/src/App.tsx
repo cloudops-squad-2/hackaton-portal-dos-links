@@ -14,6 +14,7 @@ import './styles/global.css';
 import './styles/components.css';
 import { Header } from './components/Header';
 import { ShrinkForm } from './components/ShrinkForm';
+import type { BeamMode } from './components/ShrinkForm';
 import { ExperimentList } from './components/ExperimentList';
 import { StatsPanel } from './components/StatsPanel';
 import { AchievementsPanel } from './components/AchievementsPanel';
@@ -43,6 +44,7 @@ function App() {
 
   // Estado de humor da Dra. Miúda
   const [characterMood, setCharacterMood] = useState<CharacterMood>('idle');
+  const [beamMode, setBeamMode] = useState<BeamMode>('instant');
   const moodTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function setMoodTemporary(mood: CharacterMood, durationMs = 3000) {
@@ -97,17 +99,28 @@ function App() {
               <span className="highlight">Ligue o Raio Encolhedor!</span>
             </h1>
             <p className="hero-description lab-hero-description">
-              A Dra. Miúda tem uma invenção para isso. Cole seu endereço,
-              escolha a potência do raio e transforme uma URL enorme em um link
-              de bolso. Simples de criar, fácil de compartilhar.
+              Cansada de endereços intermináveis, a Dra. Miúda inventou um raio
+              que encolhe links sem mudar aonde eles levam. Agora você pode
+              experimentar essa descoberta no laboratório dela.
             </p>
-            <div className="lab-hero-tags" aria-label="Recursos do laboratório">
-              <span>Encurtamento imediato</span>
-              <span>Histórico de links</span>
-              <span>Conquistas</span>
-            </div>
+            <details className="lab-story">
+              <summary>Conheça a história da invenção <span aria-hidden="true">↗</span></summary>
+              <div className="lab-story-body">
+                <p>
+                  Tudo começou com um desafio aparentemente impossível: guardar
+                  um endereço gigante no bolso. Entre cálculos, protótipos e
+                  algumas faíscas inesperadas, a cientista criou o primeiro
+                  Raio Encolhedor. O segredo? O endereço fica menor, mas o
+                  destino permanece exatamente o mesmo.
+                </p>
+                <p>
+                  Hoje o laboratório está aberto. O Raio Instantâneo já pode
+                  ser usado; o Raio Sob Medida é seu próximo experimento.
+                </p>
+              </div>
+            </details>
           </div>
-          <div className="lab-hero-visual">
+          <div className={`lab-hero-visual lab-hero-visual--${beamMode} lab-hero-visual--${characterMood}`}>
             <div className="hero-character">
               <div className="hero-character-frame">
                 <DraMiuda mood={characterMood} />
@@ -118,7 +131,14 @@ function App() {
               <span className="lab-spark lab-spark--a" aria-hidden="true" />
               <span className="lab-spark lab-spark--b" aria-hidden="true" />
             </div>
-            <div className="lab-character-caption"><span className="lab-status-dot" /> Dra. Miúda — Inventora do laboratório</div>
+            <div className="lab-character-caption" role="status" aria-live="polite">
+              <span className="lab-status-dot" aria-hidden="true" />
+              {characterMood === 'working' ? 'Dra. Miúda está disparando o raio…'
+                : characterMood === 'success' ? 'Experimento aprovado pela cientista!'
+                : characterMood === 'error' ? 'Ops! A cientista está recalibrando o raio.'
+                : beamMode === 'custom' ? 'Dra. Miúda apresenta seu protótipo Sob Medida'
+                : 'Dra. Miúda — pronta para seu próximo experimento'}
+            </div>
           </div>
         </section>
 
@@ -130,6 +150,7 @@ function App() {
                 onLinkCopied={handleLinkCopied}
                 onSubmitting={handleFormSubmitting}
                 onSubmitError={handleFormError}
+                onModeChange={setBeamMode}
               />
             </div>
             <div className="lab-section-intro">

@@ -17,6 +17,18 @@ import { LinkQrCode } from './LinkQrCode';
 
 // ── Constantes ─────────────────────────────────────────────────────────────
 
+const HIDDEN_KEY = 'encolhe-hidden-experiments-v2';
+const REMOVED_KEY = 'encolhe-removed-from-history-v2';
+const CLEARED_AT_KEY = 'encolhe-history-cleared-at-v2';
+
+function readCodes(key: string): string[] {
+  try {
+    const value: unknown = JSON.parse(localStorage.getItem(key) ?? '[]');
+    return Array.isArray(value) ? value.filter((code): code is string => typeof code === 'string') : [];
+  } catch {
+    return [];
+  }
+}
 const PUBLIC_BASE: string =
   (import.meta.env.VITE_PUBLIC_BASE_URL as string | undefined) ?? '';
 
@@ -60,6 +72,46 @@ export function ExperimentList({ refreshKey, onDataChange }: ExperimentListProps
   const [error,   setError]   = useState<string | null>(null);
   const [qrLink, setQrLink] = useState<{ code: string; url: string } | null>(null);
   const [copyStatus, setCopyStatus] = useState('');
+  const [hiddenCodes, setHiddenCodes] = useState<string[]>(() => readCodes(HIDDEN_KEY));
+  const [removedCodes, setRemovedCodes] = useState<string[]>(() => readCodes(REMOVED_KEY));
+  const [clearedAt, setClearedAt] = useState<string>(() => {
+    try { return localStorage.getItem(CLEARED_AT_KEY) ?? ''; } catch { return ''; }
+  });
+
+  function hideExperiment(code: string) {
+    if (!window.confirm('Ocultar este experimento neste navegador? Você poderá restaurá-lo depois. O link continuará funcionando.')) return;
+    setHiddenCodes((prev) => {
+      const next = [...new Set([...prev, code])];
+      try { localStorage.setItem(HIDDEN_KEY, JSON.stringify(next)); } catch { /* sem persistência */ }
+      return next;
+    });
+  }
+
+  function removeFromHistory(code: string) {
+    if (!window.confirm('Apagar este experimento do histórico deste navegador, sem opção de restaurar pela interface? O link continuará funcionando, pois a API não permite exclusão permanente.')) return;
+    setRemovedCodes((prev) => {
+      const next = [...new Set([...prev, code])];
+      try { localStorage.setItem(REMOVED_KEY, JSON.stringify(next)); } catch { /* sem persistência */ }
+      return next;
+    });
+    setQrLink((prev) => prev?.code === code ? null : prev);
+  }
+
+  function clearHistory() {
+    if (!window.confirm('Apagar TODO o histórico deste navegador, incluindo as outras páginas? Os links continuarão funcionando e não será possível restaurar a lista pela interface.')) return;
+    // O marco temporal também oculta links antigos de páginas ainda não carregadas.
+    // Links criados depois desta limpeza continuarão aparecendo normalmente.
+    const now = new Date().toISOString();
+    try { localStorage.setItem(CLEARED_AT_KEY, now); } catch { /* sem persistência */ }
+    setClearedAt(now);
+    setQrLink(null);
+    setCopyStatus('');
+  }
+
+  function restoreExperiments() {
+    setHiddenCodes([]);
+    try { localStorage.removeItem(HIDDEN_KEY); } catch { /* sem persistência */ }
+  }
 
   // C4 — busca e ordenação
   const [query,     setQuery]     = useState('');
@@ -102,13 +154,18 @@ export function ExperimentList({ refreshKey, onDataChange }: ExperimentListProps
   // Filtro: busca no código E na URL original (case-insensitive)
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return links;
-    return links.filter(
+    const visible = links.filter((link) =>
+      !hiddenCodes.includes(link.code) &&
+      !removedCodes.includes(link.code) &&
+      (!clearedAt || new Date(link.createdAt).getTime() > new Date(clearedAt).getTime())
+    );
+    if (!q) return visible;
+    return visible.filter(
       (l) =>
         l.code.toLowerCase().includes(q) ||
         l.originalUrl.toLowerCase().includes(q),
     );
-  }, [links, query]);
+  }, [links, query, hiddenCodes, removedCodes, clearedAt]);
 
   // Ordenação sobre os itens filtrados
   const sorted = useMemo(() => {
@@ -218,6 +275,13 @@ export function ExperimentList({ refreshKey, onDataChange }: ExperimentListProps
           </button>
         </div>
       </div>
+      <div className="v2-history-note">
+        <button type="button" className="v2-delete-button" onClick={clearHistory} disabled={loading || !!error || (meta?.total ?? 0) === 0} aria-label="Apagar todo o histórico neste navegador">
+          Apagar tudo
+        </button>
+        <span> Apaga apenas a lista deste navegador; os links continuam ativos.</span>
+      </div>
+      {hiddenCodes.length > 0 && <p className="v2-history-note">{hiddenCodes.length} experimento(s) oculto(s) neste navegador. <button type="button" className="btn-refresh" onClick={restoreExperiments}>Restaurar ocultos</button></p>}
 
       {/* Nota de escopo dos filtros — aparece quando há busca/ordenação e múltiplas páginas */}
       {showScopeNote && isMultiPage && (
@@ -261,8 +325,8 @@ export function ExperimentList({ refreshKey, onDataChange }: ExperimentListProps
       {!loading && !error && links.length > 0 && sorted.length === 0 && (
         <div className="list-empty">
           
-          <p className="list-empty-text">Nenhum link encontrado para "{query}".</p>
-          <p className="list-empty-hint">Tente outra parte do código ou URL.</p>
+          <p className="list-empty-text">{isFiltered ? `Nenhum link encontrado para "${query}".` : 'Nenhum experimento visível no histórico.'}</p>
+          <p className="list-empty-hint">{isFiltered ? 'Tente outra parte do código ou URL.' : 'Novos experimentos aparecerão aqui normalmente.'}</p>
         </div>
       )}
 
@@ -342,6 +406,8 @@ export function ExperimentList({ refreshKey, onDataChange }: ExperimentListProps
                         <div className="link-actions">
                           <button type="button" onClick={() => void copyLink(new URL(shortUrl, window.location.origin).toString())} aria-label={`Copiar link ${link.code}`}>Copiar</button>
                           <button type="button" onClick={() => { setQrLink({ code: link.code, url: new URL(shortUrl, window.location.origin).toString() }); setCopyStatus(''); }} aria-label={`Exibir QR Code de ${link.code}`}>QR Code</button>
+                          <button type="button" className="v2-delete-button" onClick={() => hideExperiment(link.code)} aria-label={`Ocultar experimento ${link.code}`}>Ocultar</button>
+                          <button type="button" className="v2-delete-button" onClick={() => removeFromHistory(link.code)} aria-label={`Apagar do histórico o experimento ${link.code}`}>Apagar do histórico</button>
                         </div>
                       </td>
                     </tr>

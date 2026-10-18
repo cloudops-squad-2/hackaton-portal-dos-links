@@ -15,7 +15,7 @@ export type BeamMode = 'instant' | 'custom';
 type ExpiryChoice = 'never' | '1d' | '7d' | '30d';
 
 interface ShrinkFormProps {
-  onLinkCreated?: (hadExpiry: boolean) => void;
+  onLinkCreated?: (hadExpiry: boolean, link: LinkItem) => void;
   onLinkCopied?: () => void;
   onSubmitting?: () => void;
   onSubmitError?: () => void;
@@ -71,7 +71,12 @@ export function ShrinkForm({
   }
 
   const urlError = touched ? validateUrl(url) : null;
-  const customCodeError = customCode ? validateCustomCode(customCode, 7) : null;
+  const customCodeError = customCode
+    ? (validateCustomCode(customCode, customCode.length)
+      ?? (customCode.length < 5 || customCode.length > 9
+        ? 'Escolha de 5 a 9 letras ou números.'
+        : null))
+    : null;
   const customUnavailable = mode === 'custom';
   const canSubmit = validateUrl(url) === null && !customUnavailable && !submitting;
 
@@ -96,7 +101,7 @@ export function ShrinkForm({
         ...(expiresIn !== undefined ? { expiresIn } : {}),
       });
       setCreatedLink(link);
-      onLinkCreated?.(expiresIn !== undefined);
+      onLinkCreated?.(expiresIn !== undefined, link);
     } catch (error) {
       setSubmitError(friendlyError(error));
       onSubmitError?.();
@@ -220,9 +225,9 @@ export function ShrinkForm({
                 checked={mode === 'instant'} onChange={() => chooseMode('instant')}
                 disabled={submitting} />
               <span className="v2-mode-symbol" aria-hidden="true">↯</span>
-              <span className="mode-option-name">Raio Instantâneo</span>
+              <span className="mode-option-name">Raio Padrão</span>
               <span className="mode-option-size">Automático · 7 caracteres</span>
-              <span className="mode-option-desc">A invenção original: rápida e pronta para usar.</span>
+              <span className="mode-option-desc">Um código de 7 caracteres, gerado automaticamente.</span>
               <span className="v2-mode-state">Disponível agora</span>
             </label>
 
@@ -233,8 +238,8 @@ export function ShrinkForm({
                 disabled={submitting} />
               <span className="v2-mode-symbol" aria-hidden="true">✧</span>
               <span className="mode-option-name">Raio Sob Medida</span>
-              <span className="mode-option-size">Você escolhe o final</span>
-              <span className="mode-option-desc">Um protótipo especial da cientista.</span>
+              <span className="mode-option-size">Personalizado · 5 a 9 caracteres</span>
+              <span className="mode-option-desc">Escolha um código de 5 a 9 letras ou números.</span>
               <span className="v2-mode-state v2-mode-state--preview">Prévia · aguarda API</span>
             </label>
           </div>
@@ -246,17 +251,23 @@ export function ShrinkForm({
               <strong>Protótipo em desenvolvimento</strong>
               <span>Não cria links ainda</span>
             </div>
+            <p className="field-hint" role="note">
+              Escolha de 5 a 9 letras ou números para o final do seu link,
+              por exemplo <code>/s/miyu123</code>. O código precisa estar disponível.
+              A personalização ainda é uma prévia: a API precisa oferecer suporte
+              antes que este modo possa criar links.
+            </p>
             <label htmlFor="custom-code" className="field-label">Como você gostaria de chamar seu link?</label>
             <input id="custom-code" className={`text-input mono${customCodeError ? ' input-error' : ''}`}
-              type="text" value={customCode} maxLength={7} placeholder="ex.: miyu123"
+              type="text" value={customCode} minLength={5} maxLength={9} placeholder="ex.: miyu123"
               onChange={(event) => setCustomCode(event.target.value)} spellCheck={false}
               aria-describedby="custom-code-help" aria-invalid={Boolean(customCodeError)} />
             <p id="custom-code-help" className={customCodeError ? 'field-error' : 'field-hint'}>
-              {customCodeError ?? 'Prévia de 7 caracteres. Para gerar links personalizados, a API precisa aceitar customCode.'}
+              {customCodeError ?? 'Digite entre 5 e 9 letras ou números. O link ainda não será criado.'}
             </p>
             <p className="v2-custom-example">Prévia: <code>/s/{customCode || 'miyu123'}</code> <span>não é um link ativo</span></p>
             <button type="button" className="v2-back-to-ray" onClick={() => chooseMode('instant')}>
-              Usar o Raio Instantâneo agora →
+              Usar o Raio Padrão agora →
             </button>
           </div>
         )}

@@ -20,6 +20,7 @@ import { LinkQrCode } from './LinkQrCode';
 const HIDDEN_KEY = 'encolhe-hidden-experiments-v2';
 const REMOVED_KEY = 'encolhe-removed-from-history-v2';
 const CLEARED_AT_KEY = 'encolhe-history-cleared-at-v2';
+const OWNED_KEY = 'encolhe-local-links-v2';
 
 function readCodes(key: string): string[] {
   try {
@@ -60,11 +61,12 @@ interface ExperimentListProps {
   refreshKey: number;
   /** Chamado sempre que novos dados são carregados — alimenta StatsPanel. */
   onDataChange?: (links: LinkItem[], meta: PaginationMeta | null) => void;
+  onOwnershipChange?: () => void;
 }
 
 // ── Componente ─────────────────────────────────────────────────────────────
 
-export function ExperimentList({ refreshKey, onDataChange }: ExperimentListProps) {
+export function ExperimentList({ refreshKey, onDataChange, onOwnershipChange }: ExperimentListProps) {
   const [links,   setLinks]   = useState<LinkItem[]>([]);
   const [meta,    setMeta]    = useState<PaginationMeta | null>(null);
   const [page,    setPage]    = useState(1);
@@ -72,11 +74,26 @@ export function ExperimentList({ refreshKey, onDataChange }: ExperimentListProps
   const [error,   setError]   = useState<string | null>(null);
   const [qrLink, setQrLink] = useState<{ code: string; url: string } | null>(null);
   const [copyStatus, setCopyStatus] = useState('');
+  const [ownedCodes, setOwnedCodes] = useState<string[]>(() => readCodes(OWNED_KEY));
   const [hiddenCodes, setHiddenCodes] = useState<string[]>(() => readCodes(HIDDEN_KEY));
   const [removedCodes, setRemovedCodes] = useState<string[]>(() => readCodes(REMOVED_KEY));
   const [clearedAt, setClearedAt] = useState<string>(() => {
     try { return localStorage.getItem(CLEARED_AT_KEY) ?? ''; } catch { return ''; }
   });
+
+  function recognizeAsMine(code: string) {
+    if (ownedCodes.includes(code)) return;
+    if (!window.confirm('Você confirma que criou este link? Ele passará a aparecer nos seus Indicadores e ranking pessoal neste navegador.')) return;
+    const next = [...new Set([...readCodes(OWNED_KEY), code])];
+    try {
+      localStorage.setItem(OWNED_KEY, JSON.stringify(next));
+    } catch {
+      window.alert('Não foi possível salvar o link neste navegador.');
+      return;
+    }
+    setOwnedCodes(next);
+    onOwnershipChange?.();
+  }
 
   function hideExperiment(code: string) {
     if (!window.confirm('Ocultar este experimento neste navegador? Você poderá restaurá-lo depois. O link continuará funcionando.')) return;
@@ -106,6 +123,8 @@ export function ExperimentList({ refreshKey, onDataChange }: ExperimentListProps
     setClearedAt(now);
     setQrLink(null);
     setCopyStatus('');
+    onDataChange?.([], null);
+    setPage(1);
   }
 
   function restoreExperiments() {
@@ -167,6 +186,11 @@ export function ExperimentList({ refreshKey, onDataChange }: ExperimentListProps
     );
   }, [links, query, hiddenCodes, removedCodes, clearedAt]);
 
+  // O painel de estatísticas só recebe dados realmente visíveis.
+  useEffect(() => {
+    onDataChange?.(filtered, filtered.length ? meta : null);
+  }, [filtered, meta, onDataChange]);
+
   // Ordenação sobre os itens filtrados
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
@@ -181,7 +205,7 @@ export function ExperimentList({ refreshKey, onDataChange }: ExperimentListProps
   }, [filtered, sortField, sortDir]);
 
   const isFiltered    = query.trim().length > 0;
-  const isMultiPage   = meta ? meta.totalPages > 1 : false;
+  const isMultiPage   = meta ? meta.totalPages > 1 && filtered.length > 0 : false;
   const showScopeNote = isFiltered || (sortField !== 'createdAt' || sortDir !== 'desc');
 
   function toggleSort(field: SortField) {
@@ -276,10 +300,17 @@ export function ExperimentList({ refreshKey, onDataChange }: ExperimentListProps
         </div>
       </div>
       <div className="v2-history-note">
-        <button type="button" className="v2-delete-button" onClick={clearHistory} disabled={loading || !!error || (meta?.total ?? 0) === 0} aria-label="Apagar todo o histórico neste navegador">
+        <button type="button" className="v2-delete-button" onClick={clearHistory} disabled={loading || !!error || !filtered.length} aria-label="Apagar todo o histórico neste navegador">
           Apagar tudo
         </button>
         <span> Apaga apenas a lista deste navegador; os links continuam ativos.</span>
+      </div>
+      <p className="v2-history-note">Links antigos podem aparecer aqui sem constar nos Indicadores. Se você os criou, use <strong>É meu link</strong> na linha correspondente. As conquistas não guardam os códigos e os cliques são consultados na API.</p>
+            {/* Exemplo educativo fixo: não pertence à API e nunca é apagado do histórico real. */}
+      <div className="v2-sample" role="note" aria-label="Exemplo ilustrativo de link encurtado">
+        <strong>Exemplo ilustrativo</strong>
+        <span><code>https://exemplo.com/pagina-muito-longa</code> → <code>/s/abc123</code></span>
+        <span>Não é um link criado nem ativo; permanece após limpar o histórico.</span>
       </div>
       {hiddenCodes.length > 0 && <p className="v2-history-note">{hiddenCodes.length} experimento(s) oculto(s) neste navegador. <button type="button" className="btn-refresh" onClick={restoreExperiments}>Restaurar ocultos</button></p>}
 
@@ -404,9 +435,10 @@ export function ExperimentList({ refreshKey, onDataChange }: ExperimentListProps
                       </td>
                       <td>
                         <div className="link-actions">
+                          {!ownedCodes.includes(link.code) && <button type="button" onClick={() => recognizeAsMine(link.code)} aria-label={`Reconhecer ${link.code} como meu`}>É meu link</button>}
                           <button type="button" onClick={() => void copyLink(new URL(shortUrl, window.location.origin).toString())} aria-label={`Copiar link ${link.code}`}>Copiar</button>
                           <button type="button" onClick={() => { setQrLink({ code: link.code, url: new URL(shortUrl, window.location.origin).toString() }); setCopyStatus(''); }} aria-label={`Exibir QR Code de ${link.code}`}>QR Code</button>
-                          <button type="button" className="v2-delete-button" onClick={() => hideExperiment(link.code)} aria-label={`Ocultar experimento ${link.code}`}>Ocultar</button>
+                          <button type="button" className="v2-delete-button v2-delete-button--secondary" onClick={() => hideExperiment(link.code)} aria-label={`Ocultar experimento ${link.code}`}>Ocultar</button>
                           <button type="button" className="v2-delete-button" onClick={() => removeFromHistory(link.code)} aria-label={`Apagar do histórico o experimento ${link.code}`}>Apagar do histórico</button>
                         </div>
                       </td>
@@ -431,7 +463,7 @@ export function ExperimentList({ refreshKey, onDataChange }: ExperimentListProps
           )}
 
           {/* Paginação */}
-          {meta && meta.totalPages > 1 && (
+          {meta && meta.totalPages > 1 && sorted.length > 0 && !clearedAt && removedCodes.length === 0 && hiddenCodes.length === 0 && (
             <nav className="list-pagination" aria-label="Paginação de experimentos">
               <button
                 type="button"
@@ -446,7 +478,7 @@ export function ExperimentList({ refreshKey, onDataChange }: ExperimentListProps
                 Página {page} de {meta.totalPages}
                 {' '}
                 <span className="list-page-total">
-                  ({meta.total} {meta.total === 1 ? 'experimento' : 'experimentos'})
+                  ({sorted.length} visíveis nesta página)
                 </span>
               </span>
               <button
@@ -461,9 +493,9 @@ export function ExperimentList({ refreshKey, onDataChange }: ExperimentListProps
             </nav>
           )}
 
-          {meta && meta.totalPages <= 1 && (
+          {meta && meta.totalPages <= 1 && sorted.length > 0 && (
             <p className="list-total-single">
-              {meta.total} {meta.total === 1 ? 'experimento' : 'experimentos'} no laboratório
+              {sorted.length} {sorted.length === 1 ? 'experimento visível' : 'experimentos visíveis'}
             </p>
           )}
         </>

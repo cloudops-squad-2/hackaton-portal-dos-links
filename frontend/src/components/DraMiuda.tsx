@@ -203,29 +203,20 @@ export function DraMiuda({ mood = 'idle', label }: DraMiudaProps) {
         <line x1="32" y1="45" x2="26" y2="45" stroke={C.lensFrame} strokeWidth="1.5" />
         <line x1="76" y1="45" x2="82" y2="45" stroke={C.lensFrame} strokeWidth="1.5" />
 
-        {/* ── Olhos ──
-            IMPORTANTE: não usar grupo wrapper com animação de escala —
-            o piscar é aplicado diretamente nas pupilas (.dra-miuda__pupil)
-            com transform-box: fill-box no CSS, garantindo que o
-            transform-origin fique no centro da própria ellipse.
-        ── */}
-        {/* Olho esquerdo */}
-        <ellipse cx="41" cy="45" rx="5" ry="5" fill={C.eyeWhite} />
-        <ellipse
-          className="dra-miuda__pupil dra-miuda__pupil--left"
-          cx="41" cy="45" rx="3" ry="3"
-          fill={C.eyePupil}
-        />
-        <ellipse cx="42.5" cy="43.5" rx="1" ry="1" fill={C.eyeShine} />
-
-        {/* Olho direito */}
-        <ellipse cx="68" cy="45" rx="5" ry="5" fill={C.eyeWhite} />
-        <ellipse
-          className="dra-miuda__pupil dra-miuda__pupil--right"
-          cx="68" cy="45" rx="3" ry="3"
-          fill={C.eyePupil}
-        />
-        <ellipse cx="69.5" cy="43.5" rx="1" ry="1" fill={C.eyeShine} />
+        {/* Piscada dos olhos inteiros: branco, pupila e brilho se fecham juntos. */}
+        <g className="dra-miuda__eye dra-miuda__eye--left">
+          <ellipse cx="41" cy="45" rx="5" ry="5" fill={C.eyeWhite} />
+          <ellipse cx="41" cy="45" rx="3" ry="3" fill={C.eyePupil} />
+          <ellipse cx="42.5" cy="43.5" rx="1" ry="1" fill={C.eyeShine} />
+          {/* Cílios delicados na borda externa superior do olho. */}
+          <path d="M36.8 42.7 L33.8 40.7 M38 41.5 L36.6 38.4" fill="none" stroke={C.hair} strokeWidth="1" strokeLinecap="round" />
+        </g>
+        <g className="dra-miuda__eye dra-miuda__eye--right">
+          <ellipse cx="68" cy="45" rx="5" ry="5" fill={C.eyeWhite} />
+          <ellipse cx="68" cy="45" rx="3" ry="3" fill={C.eyePupil} />
+          <ellipse cx="69.5" cy="43.5" rx="1" ry="1" fill={C.eyeShine} />
+          <path d="M72.2 41.5 L73.7 38.4 M73.5 42.7 L76.5 40.7" fill="none" stroke={C.hair} strokeWidth="1" strokeLinecap="round" />
+        </g>
 
         {/* Boca */}
         <path

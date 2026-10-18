@@ -31,6 +31,7 @@ function App() {
   const [listLinks, setListLinks]   = useState<LinkItem[]>([]);
   const [listMeta,  setListMeta]    = useState<PaginationMeta | null>(null);
   const [achievements, setAchievements] = useState(() => getAllAchievements());
+  const [ownershipRevision, setOwnershipRevision] = useState(0);
 
   // Toast de conquista
   const [toastAchievement, setToastAchievement] = useState<Achievement | null>(null);
@@ -58,7 +59,14 @@ function App() {
     setCharacterMood('working');
   }
 
-  function handleLinkCreated(hadExpiry: boolean) {
+  function handleLinkCreated(hadExpiry: boolean, link: LinkItem) {
+    try {
+      const key = 'encolhe-local-links-v2';
+      const saved: unknown = JSON.parse(localStorage.getItem(key) ?? '[]');
+      const codes = Array.isArray(saved) ? saved.filter((v): v is string => typeof v === 'string') : [];
+      localStorage.setItem(key, JSON.stringify([...new Set([...codes, link.code])]));
+    } catch { /* armazenamento opcional */ }
+    setOwnershipRevision((n) => n + 1);
     setMoodTemporary('success', 3500);
     setRefreshKey((prev) => prev + 1);
     // Registra conquistas e exibe toast para as recém-desbloqueadas
@@ -107,15 +115,13 @@ function App() {
               <summary>Conheça a história da invenção <span aria-hidden="true">↗</span></summary>
               <div className="lab-story-body">
                 <p>
-                  Tudo começou com um desafio aparentemente impossível: guardar
-                  um endereço gigante no bolso. Entre cálculos, protótipos e
-                  algumas faíscas inesperadas, a cientista criou o primeiro
-                  Raio Encolhedor. O segredo? O endereço fica menor, mas o
-                  destino permanece exatamente o mesmo.
+                  A Dra. Miúda adorava transformar grandes ideias em pequenas invenções.
+                  Entre experiências e faíscas, nasceu o Encolhe!: um laboratório
+                  onde o Raio Encolhedor transforma endereços gigantes em links
+                  compactos, sem mudar o destino.
                 </p>
                 <p>
-                  Hoje o laboratório está aberto. O Raio Instantâneo já pode
-                  ser usado; o Raio Sob Medida é seu próximo experimento.
+                  Agora o laboratório está aberto para suas próprias descobertas!
                 </p>
               </div>
             </details>
@@ -161,7 +167,7 @@ function App() {
               </div>
             </div>
             <div className="full-width-card animate-fade-up animate-delay-2">
-              <ExperimentList refreshKey={refreshKey} onDataChange={handleDataChange} />
+              <ExperimentList refreshKey={refreshKey} onDataChange={handleDataChange} onOwnershipChange={() => setOwnershipRevision((n) => n + 1)} />
             </div>
           </div>
 
@@ -171,7 +177,7 @@ function App() {
             </div>
             {(listLinks.length > 0 || listMeta !== null) ? (
               <div className="lab-side-card lab-side-card--stats animate-fade-up animate-delay-2">
-                <StatsPanel links={listLinks} meta={listMeta} />
+                <StatsPanel links={listLinks} meta={listMeta} ownershipRevision={ownershipRevision} />
               </div>
             ) : (
               <div className="lab-side-card lab-awaiting" aria-label="Estatísticas aguardando a API">

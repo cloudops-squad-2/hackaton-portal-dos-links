@@ -87,28 +87,18 @@ export function categoryLabel(cat: DailyTip['category']): string {
   return CATEGORY_LABELS[cat];
 }
 
-/**
- * Calcula o dia do ano (1-based) a partir de ano/mês/dia explícitos,
- * evitando problemas de horário de verão que afetam subtração de timestamps.
- */
-function dayOfYear(date: Date): number {
-  const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-  const year  = date.getFullYear();
-  const month = date.getMonth(); // 0-based
-  const day   = date.getDate();  // 1-based
 
-  const isLeap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
-  if (isLeap) DAYS_IN_MONTH[1] = 29;
-
-  let doy = day;
-  for (let m = 0; m < month; m++) {
-    doy += DAYS_IN_MONTH[m];
-  }
-  return doy; // 1–365/366
-}
-
-/** Retorna a dica do dia baseada na data local atual. */
+/** Sorteia uma nova dica em cada abertura da página, sem repetir a anterior. */
 export function getDailyTip(): DailyTip {
-  const doy = dayOfYear(new Date());
-  return TIPS[(doy - 1) % TIPS.length];
+  let previous = -1;
+  try {
+    const value = Number(localStorage.getItem('encolhe-last-tip-v3'));
+    if (localStorage.getItem('encolhe-last-tip-v3') !== null && Number.isInteger(value)) previous = value;
+  } catch { /* armazenamento indisponível */ }
+  let next = Math.floor(Math.random() * TIPS.length);
+  if (TIPS.length > 1 && next === previous) {
+    next = (next + 1 + Math.floor(Math.random() * (TIPS.length - 1))) % TIPS.length;
+  }
+  try { localStorage.setItem('encolhe-last-tip-v3', String(next)); } catch { /* opcional */ }
+  return TIPS[next];
 }

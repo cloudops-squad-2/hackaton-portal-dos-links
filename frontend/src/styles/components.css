@@ -1901,12 +1901,16 @@ body, #root, .main-content, .page-wrapper {
   animation-delay: 0.08s;
 }
 
-/* Piscar: escala vertical só da pupila */
-.dra-miuda--idle .dra-miuda__pupil--left {
-  animation: miuda-blink 5s ease-in-out infinite;
+/* Piscada completa e discreta: olhos e cílios juntos, sem mover cabeça/pescoço.
+   Três piscadas curtas com espaçamentos variados, em um ciclo de 9s. */
+.dra-miuda__eye {
+  transform-box: fill-box;
+  transform-origin: center center;
+  animation: miuda-whole-eye-blink 9s linear infinite;
 }
-.dra-miuda--idle .dra-miuda__pupil--right {
-  animation: miuda-blink 5s ease-in-out 0.06s infinite;
+@keyframes miuda-whole-eye-blink {
+  0%, 10%, 12.2%, 42%, 44.2%, 75%, 77.2%, 100% { transform: scaleY(1); }
+  11%, 43%, 76% { transform: scaleY(0.08); }
 }
 
 .dra-miuda--idle .dra-miuda__smile      { opacity: 1; }
@@ -1999,8 +2003,9 @@ body, #root, .main-content, .page-wrapper {
 
 /* ── ERROR ────────────────────────────────────────────── */
 
-.dra-miuda--error .dra-miuda__head {
-  transform-origin: 55px 44px;
+/* A cabeça não gira isoladamente: evita abrir espaço entre pescoço e jaleco. */
+.dra-miuda-svg.dra-miuda--error {
+  transform-origin: center;
   animation: miuda-wobble 0.5s ease-in-out 3;
 }
 
@@ -2029,8 +2034,7 @@ body, #root, .main-content, .page-wrapper {
   .dra-miuda--idle .dra-miuda__body,
   .dra-miuda--idle .dra-miuda__arms,
   .dra-miuda--idle .dra-miuda__ray-gun,
-  .dra-miuda--idle .dra-miuda__pupil--left,
-  .dra-miuda--idle .dra-miuda__pupil--right,
+  .dra-miuda__eye,
   .dra-miuda-svg.dra-miuda--working,
   .dra-miuda--working .dra-miuda__crystal,
   .dra-miuda--working .dra-miuda__wave--1,
@@ -2044,7 +2048,7 @@ body, #root, .main-content, .page-wrapper {
   .dra-miuda--success .dra-miuda__star--1,
   .dra-miuda--success .dra-miuda__star--2,
   .dra-miuda--success .dra-miuda__star--3,
-  .dra-miuda--error .dra-miuda__head,
+  .dra-miuda-svg.dra-miuda--error,
   .dra-miuda--error .dra-miuda__sweat-drop {
     animation: none;
   }
@@ -2692,3 +2696,65 @@ body, #root, .main-content, .page-wrapper {
   .lab-hero-visual--working .hero-ray--2::before,
   .lab-hero-visual--success .hero-character-frame { animation: none !important; transition: none !important; }
 }
+
+/* V2 — ações de histórico. Estilo harmonizado com os controles do laboratório. */
+.v2-history-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0;
+  color: #b8d0da;
+  font-size: .82rem;
+  line-height: 1.5;
+}
+.v2-delete-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 8px 11px;
+  border: 1px solid #a96c67;
+  border-radius: 8px;
+  background: #38232d;
+  color: #ffe0db;
+  font: inherit;
+  font-size: .78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color .2s ease, background .2s ease, transform .2s ease;
+}
+.v2-delete-button:hover:not(:disabled) {
+  background: #55303a;
+  border-color: #f59c88;
+  transform: translateY(-1px);
+}
+.v2-delete-button:focus-visible { outline: 2px solid #fbb6a6; outline-offset: 3px; }
+.v2-delete-button:disabled { opacity: .48; cursor: not-allowed; }
+.v2-delete-button--secondary {
+  border-color: #456d80;
+  background: #183143;
+  color: #d4e9f3;
+}
+.v2-delete-button--secondary:hover:not(:disabled) { border-color: #7edfd3; background: #25465a; }
+.v2-sample {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0;
+  padding: 12px 14px;
+  border: 1px dashed #416b7a;
+  border-radius: 10px;
+  background: #142c3c;
+  color: #c9e0e8;
+  font-size: .82rem;
+  line-height: 1.5;
+}
+.v2-sample strong { color: #ffcf6a; }
+.v2-sample code { color: #7de5d7; overflow-wrap: anywhere; }
+
+/* História da marca: complemento compacto, sem ocupar o espaço do encurtador. */
+.lab-story { margin-top: 0.75rem; }
+.lab-story-body { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+.lab-story-body p { margin: 0.25rem 0; line-height: 1.5; }

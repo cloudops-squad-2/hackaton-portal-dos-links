@@ -1,0 +1,79 @@
+# otel-collector-config.yaml — configuração local para docker-compose
+#
+# Source of truth para K8s:
+#   hackaton-portal-dos-links-gitops/k8s/observability/otel-collector-configmap.yaml
+#
+# Esta cópia adapta apenas o endpoint do Tempo para o ambiente local (Docker Compose).
+# O Tempo não é incluído no compose por padrão — o pipeline de traces aponta para um
+# endpoint inexistente (localhost:14317) de forma intencional: o Collector inicializa
+# normalmente, loga aviso de conexão recusada e as métricas chegam ao Prometheus sem
+# interrupção. Para habilitar traces locais, adicione o serviço "tempo" ao
+# docker-compose.yml e troque o endpoint abaixo para: tempo:4317
+#
+# Mantenha receivers, processors e o exporter prometheus sincronizados com o ConfigMap K8s.
+
+extensions:
+  health_check:
+    # Exposes GET / on :13133 — usado pelo healthcheck do docker-compose.
+    endpoint: 0.0.0.0:13133
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        # API envia spans e métricas via gRPC OTLP para esta porta.
+        endpoint: 0.0.0.0:4317
+      http:
+        # Browser envia spans via HTTP POST /otlp/v1/traces para :4318.
+        endpoint: 0.0.0.0:4318
+        traces_url_path: /otlp/v1/traces
+
+processors:
+  # memory_limiter DEVE ser o primeiro processor para evitar OOMKill.
+  # Com limite de 512Mi: 80% ≈ 410Mi hard limit, spike headroom de 100Mi.
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 80
+    spike_limit_percentage: 20
+
+  batch:
+    timeout: 5s
+    send_batch_size: 1024
+
+exporters:
+  # Traces: sem Tempo local por padrão — aponta para endpoint inexistente.
+  # O Collector retenta por max_elapsed_time e loga aviso; métricas não são afetadas.
+  # Para habilitar traces locais: adicione serviço tempo ao compose e use endpoint: tempo:4317
+  otlp/tempo:
+    endpoint: localhost:14317
+    tls:
+      insecure: true
+    sending_queue:
+      queue_size: 100
+    retry_on_failure:
+      max_elapsed_time: 10s
+
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    # resource_to_telemetry_conversion: converte atributos de recurso em labels Prometheus.
+    # Deve ser idêntico ao ConfigMap K8s para consistência entre ambientes.
+    resource_to_telemetry_conversion:
+      enabled: true
+
+service:
+  extensions: [health_check]
+
+  # Self-telemetry do Collector (otelcol_* metrics) em :8888
+  telemetry:
+    metrics:
+      address: 0.0.0.0:8888
+
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlp/tempo]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [prometheus]

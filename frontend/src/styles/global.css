@@ -1,0 +1,269 @@
+/* Estilos globais — Encolhe! | Laboratório da Dra. Miúda */
+
+@import './tokens.css';
+
+/* ── Reset mínimo ── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.6;
+  letter-spacing: 0.01em;
+  color: var(--text-secondary);
+  background-color: var(--bg-page);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Padrão de pontos sutil no fundo — identidade de laboratório */
+  background-image: radial-gradient(
+    circle,
+    rgba(45, 212, 191, 0.04) 1px,
+    transparent 1px
+  );
+  background-size: 32px 32px;
+}
+
+#root {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Tipografia ── */
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.2;
+}
+
+h1 { font-size: clamp(1.8rem, 5vw, 2.8rem); }
+h2 { font-size: clamp(1.25rem, 3vw, 1.75rem); }
+h3 { font-size: 1.1rem; }
+
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--accent-detail);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color var(--duration-base);
+}
+
+a:hover {
+  color: var(--color-teal-hover);
+}
+
+/* ── Foco acessível ── */
+:focus-visible {
+  outline: 2px solid var(--accent-detail);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+}
+
+/* ── Código inline ── */
+code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: rgba(45, 212, 191, 0.12);
+  color: var(--accent-detail);
+}
+
+/* ── Utilitários ── */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ══════════════════════════════════
+   Keyframes — Encolhe! (C3)
+══════════════════════════════════ */
+
+/* Entrada de cima com fade */
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Entrada de baixo com fade */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Fade simples */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Pulso suave — para o ícone do raio */
+@keyframes bolt-pulse {
+  0%, 100% { opacity: 1;   transform: scale(1); }
+  50%       { opacity: 0.7; transform: scale(0.92); }
+}
+
+/* Rotação de loading */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Encolhimento — usado no resultado de sucesso */
+@keyframes shrinkIn {
+  0%   { opacity: 0; transform: scale(1.06); }
+  60%  { transform: scale(0.97); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* Brilho horizontal — varredura tipo raio */
+@keyframes raySwipe {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+/* ── Dra. Miúda — keyframes de reação ── */
+
+/* Idle: respiração suave (move o corpo levemente para cima e para baixo) */
+@keyframes miuda-breathe {
+  0%, 100% { transform: translateY(0);    }
+  50%       { transform: translateY(-2px); }
+}
+
+/* Idle: piscar ocasional (escala vertical do olho → 0 rapidamente) */
+@keyframes miuda-blink {
+  0%, 90%, 100% { transform: scaleY(1);    }
+  93%, 97%      { transform: scaleY(0.05); }
+}
+
+/* Working: tremor de esforço */
+@keyframes miuda-shake {
+  0%,  100% { transform: translateX(0);    }
+  20%        { transform: translateX(-2px); }
+  40%        { transform: translateX(2px);  }
+  60%        { transform: translateX(-1.5px); }
+  80%        { transform: translateX(1.5px);  }
+}
+
+/* Working: raio pulsando durante o esforço */
+@keyframes miuda-ray-flash {
+  0%, 100% { opacity: 0.9; transform: scale(1);    }
+  50%       { opacity: 1;   transform: scale(1.15); }
+}
+
+/* Success: pulo de alegria */
+@keyframes miuda-bounce {
+  0%, 100% { transform: translateY(0)    scaleX(1);    }
+  25%       { transform: translateY(-8px) scaleX(0.95); }
+  50%       { transform: translateY(-12px) scaleX(0.92); }
+  75%       { transform: translateY(-4px)  scaleX(0.98); }
+}
+
+/* Success: estrelinhas aparecendo */
+@keyframes miuda-star-pop {
+  0%   { opacity: 0; transform: scale(0) rotate(0deg);   }
+  60%  { opacity: 1; transform: scale(1.3) rotate(20deg); }
+  100% { opacity: 0; transform: scale(1) rotate(40deg) translateY(-8px); }
+}
+
+/* Error: balanço lateral da cabeça */
+@keyframes miuda-wobble {
+  0%, 100% { transform: rotate(0deg);   }
+  20%       { transform: rotate(-6deg);  }
+  40%       { transform: rotate(5deg);   }
+  60%       { transform: rotate(-4deg);  }
+  80%       { transform: rotate(3deg);   }
+}
+
+/* Error: gota de suor caindo */
+@keyframes miuda-sweat-fall {
+  0%   { opacity: 0; transform: translateY(0);    }
+  20%  { opacity: 1; transform: translateY(2px);  }
+  100% { opacity: 0; transform: translateY(14px); }
+}
+
+/* Working/Success: anéis do feixe acendem em sequência, do maior para o menor (encolhimento) */
+@keyframes miuda-ring-pulse {
+  0%, 100% { opacity: 0.25; }
+  40%      { opacity: 1;    }
+}
+
+/* ── UI — efeitos de resultado e notificação ── */
+
+/* URL original "encolhendo" — efeito de escala + fade na tela de resultado */
+@keyframes url-shrink {
+  0%   { opacity: 1;   transform: scaleX(1)    scaleY(1);    letter-spacing: 0; }
+  60%  { opacity: 0.6; transform: scaleX(0.4)  scaleY(0.7);  letter-spacing: -0.1em; }
+  100% { opacity: 0;   transform: scaleX(0.15) scaleY(0.5);  letter-spacing: -0.15em; }
+}
+
+/* Link encurtado aparecendo — entra com efeito de expansão */
+@keyframes url-expand {
+  0%   { opacity: 0; transform: scaleX(0.3) scaleY(0.6); letter-spacing: -0.1em; }
+  70%  { opacity: 1; transform: scaleX(1.05) scaleY(1.02); }
+  100% { opacity: 1; transform: scaleX(1) scaleY(1); letter-spacing: normal; }
+}
+
+/* Toast de conquista — desliza de baixo para cima */
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(20px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+@keyframes toast-out {
+  from { opacity: 1; transform: translateY(0)    scale(1); }
+  to   { opacity: 0; transform: translateY(-10px) scale(0.95); }
+}
+
+/* Brilho de conquista desbloqueada */
+@keyframes achievement-unlock {
+  0%   { box-shadow: 0 0 0   0    rgba(45, 212, 191, 0); }
+  40%  { box-shadow: 0 0 0   8px  rgba(45, 212, 191, 0.5); }
+  100% { box-shadow: 0 0 0   0    rgba(45, 212, 191, 0); }
+}
+
+/* Loading: pulso suave no botão durante envio */
+@keyframes btn-loading-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.7; }
+}
+
+/* Desabilitar todas as animações quando usuário preferir */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

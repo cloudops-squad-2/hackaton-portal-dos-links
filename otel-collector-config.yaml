@@ -27,6 +27,18 @@ receivers:
         # Browser envia spans via HTTP POST /otlp/v1/traces para :4318.
         endpoint: 0.0.0.0:4318
         traces_url_path: /otlp/v1/traces
+        # CORS: o navegador faz POST cross-origin para /v1/traces.
+        # Sem estas configurações o browser bloqueia a exportação de traces.
+        cors:
+          allowed_origins:
+            - "http://localhost"
+            - "http://localhost:5173"
+            - "http://127.0.0.1"
+          allowed_headers:
+            - "Content-Type"
+            - "traceparent"
+            - "tracestate"
+          max_age_seconds: 3600
 
 processors:
   # memory_limiter DEVE ser o primeiro processor para evitar OOMKill.

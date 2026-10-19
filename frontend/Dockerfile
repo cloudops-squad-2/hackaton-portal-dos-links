@@ -33,8 +33,18 @@ COPY . .
 ARG VITE_API_BASE_URL=""
 ARG VITE_PUBLIC_BASE_URL=""
 
+# OpenTelemetry (REQ-OBS-02): traces frontend → API → banco.
+# VITE_OTEL_EXPORTER_URL deve ser alcançável pelo navegador do usuário
+# (porta do host, não hostname interno do Docker). Default liga em dev.
+ARG VITE_OTEL_ENABLED="true"
+ARG VITE_OTEL_SERVICE_NAME="encolhe-frontend"
+ARG VITE_OTEL_EXPORTER_URL="http://localhost:4318/v1/traces"
+
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 ENV VITE_PUBLIC_BASE_URL=$VITE_PUBLIC_BASE_URL
+ENV VITE_OTEL_ENABLED=$VITE_OTEL_ENABLED
+ENV VITE_OTEL_SERVICE_NAME=$VITE_OTEL_SERVICE_NAME
+ENV VITE_OTEL_EXPORTER_URL=$VITE_OTEL_EXPORTER_URL
 
 RUN npm run build
 

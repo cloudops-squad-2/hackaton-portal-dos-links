@@ -1,42 +1,37 @@
 /**
- * otel.ts — preparação de instrumentação OpenTelemetry para o frontend.
+ * otel.ts — instrumentação OpenTelemetry para o frontend (browser).
  *
- * ── STATUS: ESTRUTURA PREPARADA, NÃO FUNCIONAL SEM CONFIGURAÇÃO ──────────
+ * Ativa o rastreamento distribuído que o desafio REQ-OBS-02 exige:
+ *   frontend → API → banco.
  *
- * Este módulo define a interface e os pontos de integração para rastreamento
- * distribuído. A instrumentação real requer alinhamento com a equipe de
- * observabilidade nos seguintes pontos (tarefa D5/D9):
+ * O fluxo de propagação funciona assim:
+ *   1. A FetchInstrumentação envelopa toda chamada `fetch` e cria um span
+ *      cliente (`HTTP GET/POST`).
+ *   2. O propagador W3C TraceContext injeta o cabeçalho `traceparent`
+ *      (e `tracestate`, se houver) na requisição antes de enviá-la.
+ *   3. A API (auto-instrumentação Node) extrai esse `traceparent` e cria
+ *      o span do servidor como filho do span do frontend — a mesma trace.
+ *   4. A instrumentação do Prisma/pg cria o span do banco como filho do
+ *      span do servidor. O trace atravessa as três camadas.
  *
- *   1. Endpoint de exportação OTLP (OTEL_EXPORTER_OTLP_ENDPOINT)
- *      — URL do Collector ou endpoint direto do Grafana Tempo/Jaeger.
- *      — Precisa estar acessível via CORS pelo navegador.
+ * Endpoint de exportação (OTLP/HTTP, porta 4318 do Collector):
+ *   O Collector expõe OTLP/HTTP em /v1/traces. O navegador precisa de
+ *   CORS habilitado no receiver — ver otel-collector-config.yaml.
  *
- *   2. Cabeçalhos de propagação (traceparent / tracestate)
- *      — O backend precisa aceitar e continuar o span com os mesmos cabeçalhos.
- *      — O nginx (nginx.conf) tem placeholder comentado para proxy_set_header.
- *
- *   3. SDK a instalar (quando endpoint estiver definido):
- *      npm install @opentelemetry/sdk-trace-web@^1 \
- *                  @opentelemetry/instrumentation-fetch@^0 \
- *                  @opentelemetry/exporter-trace-otlp-http@^0 \
- *                  @opentelemetry/context-zone@^1 \
- *                  @opentelemetry/propagator-b3@^1
- *
- *   4. Política de privacidade:
- *      — Não registrar URLs com tokens, senhas ou dados pessoais.
- *      — Filtrar atributos antes de exportar (ver sanitizeUrl abaixo).
- *
- * ── Como ativar (quando pronto) ──────────────────────────────────────────
- *   .env.production:
- *     VITE_OTEL_ENABLED=true
- *     VITE_OTEL_SERVICE_NAME=encolhe-frontend
- *     VITE_OTEL_EXPORTER_URL=https://seu-collector/v1/traces
- *
- * ── Como está agora ───────────────────────────────────────────────────────
- *   VITE_OTEL_ENABLED não definido = false → nenhuma telemetria exportada.
- *   api.ts usa wrapFetch() que, sem SDK instalado, passa diretamente para
- *   o fetch nativo — sem custo, sem imports de SDK.
+ * Variáveis de ambiente (prefixo VITE_ vai para o bundle):
+ *   VITE_OTEL_ENABLED         — "true" liga a instrumentação.
+ *   VITE_OTEL_SERVICE_NAME    — nome do serviço no trace (default: encolhe-frontend).
+ *   VITE_OTEL_EXPORTER_URL    — URL OTLP/HTTP do Collector (default: http://localhost:4318/v1/traces).
  */
+
+import { WebTracerProvider } from '@opentelemetry/sdk-trace-web';
+import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base';
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
+import { FetchInstrumentation } from '@opentelemetry/instrumentation-fetch';
+import { ZoneContextManager } from '@opentelemetry/context-zone';
+import { W3CTraceContextPropagator } from '@opentelemetry/core';
+import { Resource } from '@opentelemetry/resources';
+import { registerInstrumentations } from '@opentelemetry/instrumentation';
 
 // ── Configuração por variável de ambiente ─────────────────────────────────
 
@@ -47,16 +42,16 @@ export const OTEL_SERVICE_NAME: string =
   (import.meta.env.VITE_OTEL_SERVICE_NAME as string | undefined) ??
   'encolhe-frontend';
 
+// Default aponta para o Collector local exposto em :4318 (docker-compose).
 export const OTEL_EXPORTER_URL: string =
-  (import.meta.env.VITE_OTEL_EXPORTER_URL as string | undefined) ?? '';
+  (import.meta.env.VITE_OTEL_EXPORTER_URL as string | undefined) ??
+  'http://localhost:4318/v1/traces';
 
 // ── Utilitário de sanitização de URLs ─────────────────────────────────────
 
 /**
  * Remove parâmetros potencialmente sensíveis de uma URL antes de registrar
  * em telemetria. Preserva o caminho e parâmetros não sensíveis.
- *
- * Expansível: adicionar mais chaves conforme necessidade.
  */
 const SENSITIVE_PARAMS = new Set([
   'token', 'access_token', 'password', 'secret', 'key', 'api_key',
@@ -66,7 +61,6 @@ const SENSITIVE_PARAMS = new Set([
 export function sanitizeUrl(url: string): string {
   try {
     const parsed = new URL(url, window.location.origin);
-    // Iteração compatível com lib DOM mesmo sem DOM.Iterable no tsconfig.
     parsed.searchParams.forEach((_value, key) => {
       if (SENSITIVE_PARAMS.has(key.toLowerCase())) {
         parsed.searchParams.set(key, '[REDACTED]');
@@ -81,16 +75,10 @@ export function sanitizeUrl(url: string): string {
 // ── Inicialização do SDK ───────────────────────────────────────────────────
 
 /**
- * Inicializa a instrumentação OpenTelemetry.
+ * Inicializa a instrumentação OpenTelemetry no browser.
  *
- * Chamada em main.tsx quando VITE_OTEL_ENABLED=true.
- * Atualmente um no-op — será implementada após alinhamento com a equipe.
- *
- * Quando o SDK for instalado, este será o ponto de configuração de:
- *   - TracerProvider com BatchSpanProcessor
- *   - OTLPTraceExporter apontando para OTEL_EXPORTER_URL
- *   - FetchInstrumentation com sanitização de URLs
- *   - Propagadores W3C TraceContext + B3 (conforme decisão da equipe)
+ * Deve ser chamada em main.tsx antes de montar a árvore React. Quando
+ * VITE_OTEL_ENABLED != "true", é um no-op (sem custo em produção).
  */
 export function initOtel(): void {
   if (!OTEL_ENABLED) return;
@@ -103,66 +91,66 @@ export function initOtel(): void {
     return;
   }
 
-  // TODO (D5 — após alinhamento com equipe de observabilidade):
-  //
-  // import { WebTracerProvider } from '@opentelemetry/sdk-trace-web';
-  // import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base';
-  // import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
-  // import { FetchInstrumentation } from '@opentelemetry/instrumentation-fetch';
-  // import { ZoneContextManager } from '@opentelemetry/context-zone';
-  // import { W3CTraceContextPropagator } from '@opentelemetry/core';
-  //
-  // const provider = new WebTracerProvider({
-  //   resource: new Resource({ 'service.name': OTEL_SERVICE_NAME }),
-  // });
-  //
-  // provider.addSpanProcessor(
-  //   new BatchSpanProcessor(
-  //     new OTLPTraceExporter({
-  //       url: OTEL_EXPORTER_URL,
-  //       // headers: {} — adicionar se o Collector exigir autenticação
-  //     }),
-  //   ),
-  // );
-  //
-  // provider.register({
-  //   contextManager: new ZoneContextManager(),
-  //   propagator: new W3CTraceContextPropagator(),
-  // });
-  //
-  // registerInstrumentations({
-  //   instrumentations: [
-  //     new FetchInstrumentation({
-  //       // Não capturar o corpo das requisições — pode conter dados pessoais
-  //       applyCustomAttributesOnSpan: (span, request) => {
-  //         // Sanitiza URL antes de registrar como atributo
-  //         const url = typeof request === 'string' ? request : request.url;
-  //         span.setAttribute('http.url', sanitizeUrl(url));
-  //       },
-  //     }),
-  //   ],
-  // });
+  const provider = new WebTracerProvider({
+    resource: new Resource({
+      'service.name': OTEL_SERVICE_NAME,
+    }),
+  });
+
+  provider.addSpanProcessor(
+    new BatchSpanProcessor(
+      new OTLPTraceExporter({
+        url: OTEL_EXPORTER_URL,
+        // O Collector local não exige autenticação; adicionar headers aqui
+        // se o endpoint for protegido em produção.
+      }),
+    ),
+  );
+
+  provider.register({
+    contextManager: new ZoneContextManager(),
+    // W3C TraceContext é o propagador padrão da web — injeta `traceparent`.
+    propagator: new W3CTraceContextPropagator(),
+  });
+
+  registerInstrumentations({
+    instrumentations: [
+      new FetchInstrumentation({
+        // Propaga `traceparent` automaticamente: basta o propagador
+        // registrado acima. A instrumentação envelopa `window.fetch`.
+        applyCustomAttributesOnSpan: (span, request) => {
+          // `request` pode ser um URL string, Request ou RequestInit.
+          const rawUrl =
+            typeof request === 'string'
+              ? request
+              : 'url' in request
+                ? request.url
+                : '';
+          if (rawUrl) {
+            // Sanitiza URL antes de registrar como atributo (privacidade).
+            span.setAttribute('http.url', sanitizeUrl(rawUrl));
+          }
+          // Marca o componente para facilitar o filtro no Grafana/Jaeger.
+          span.setAttribute('component', 'fetch');
+        },
+      }),
+    ],
+  });
 
   console.info(
-    `[OTel] Instrumentação preparada (service: ${OTEL_SERVICE_NAME}). ` +
-    'SDK não instalado — descomente o código acima após instalar os pacotes.',
+    `[OTel] Instrumentação ativa (service: ${OTEL_SERVICE_NAME}, ` +
+    `exporter: ${OTEL_EXPORTER_URL}). traceparent propagado para a API.`,
   );
 }
 
 // ── Tipo auxiliar para spans manuais (futuro) ─────────────────────────────
 
-/**
- * Interface mínima de span para uso no api.ts sem depender do SDK instalado.
- * Quando o SDK estiver ativo, os spans reais serão criados automaticamente
- * pela FetchInstrumentation — este tipo serve apenas para spans manuais opcionais.
- */
 export interface SpanLike {
   setAttribute(key: string, value: string | number | boolean): void;
   setStatus(status: { code: number; message?: string }): void;
   end(): void;
 }
 
-/** No-op span — usado quando OTel não está ativo. */
 export const noopSpan: SpanLike = {
   setAttribute: () => undefined,
   setStatus: () => undefined,

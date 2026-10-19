@@ -1,6 +1,6 @@
 # Portal dos Links
 
-Cloud-native link shortener built for the CloudOps Bootcamp Hackathon
+Cloud-native link shortener built for the CloudOps Bootcamp Hackathon.
 
 ## Repository structure
 

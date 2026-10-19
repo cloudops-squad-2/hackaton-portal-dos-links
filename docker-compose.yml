@@ -36,49 +36,37 @@ services:
       context: ./api
     ports:
       - "3000:3000"
+      - "4317:4317"
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://localhost:4317
       OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-portal-dos-links-api}
-      OTEL_SEMCONV_STABILITY_OPT_IN: "http"
-      OTEL_TRACES_SAMPLER: "parentbased_traceidratio"
-      OTEL_TRACES_SAMPLER_ARG: "1.0"
       PORT: "3000"
     depends_on:
       migration:
         condition: service_completed_successfully
-      otel-collector:
-        condition: service_started
-    networks:
-      - portal-net
-
-  otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.163.1
-    command: ["--config=/etc/otel/otel-collector-config.yaml"]
-    volumes:
-      - ./otel-collector-config.yaml:/etc/otel/otel-collector-config.yaml:ro
-    ports:
-      - "4317:4317"   # otlp-grpc (API → Collector)
-      - "4318:4318"   # otlp-http (browser → Collector)
-      - "8889:8889"   # prometheus metrics scrape
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:13133/"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
     networks:
       - portal-net
 
   frontend:
     build:
       context: ./frontend
+      args:
+        # VITE_* é incorporado ao bundle em tempo de build (não em runtime).
+        # VITE_OTEL_EXPORTER_URL precisa ser alcançável pelo navegador do
+        # usuário — por isso aponta para a porta do host, não para o hostname
+        # interno do Docker.
+        VITE_OTEL_ENABLED: ${VITE_OTEL_ENABLED:-true}
+        VITE_OTEL_SERVICE_NAME: ${VITE_OTEL_SERVICE_NAME:-encolhe-frontend}
+        VITE_OTEL_EXPORTER_URL: ${VITE_OTEL_EXPORTER_URL:-http://localhost:4318/v1/traces}
     ports:
       - "80:80"
     environment:
       VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
     depends_on:
       api:
+        condition: service_started
+      otel-collector:
         condition: service_started
     networks:
       - portal-net
